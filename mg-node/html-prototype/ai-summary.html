@@ -1,0 +1,11 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>AI 总结 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body>
+<a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<div class="desk"><div data-shell></div></div><template id="tpl"><div class="ed-head"><span class="ed-head__title">✨ AI 总结与周报</span><div class="seg" id="sc"><button class="seg__item is-active">当前笔记</button><button class="seg__item">本周笔记</button><button class="seg__item">选中笔记本</button></div><button class="btn btn--primary btn--sm" id="gen">生成</button></div>
+<div style="flex:1;overflow:auto;padding:24px 32px"><div class="card md" id="out" style="padding:20px 24px;min-height:200px;line-height:1.8"><p class="muted">选择范围后点「生成」。结果会带来源引用，可以一键存为新笔记。</p></div>
+<div style="margin-top:12px;display:flex;gap:8px"><button class="btn" id="save">💾 存为笔记</button><button class="btn" id="copy">复制 Markdown</button><span class="spacer"></span><span class="muted" id="use">本月用量：0 tokens</span></div></div></template>
+<script>window.page=MG=>{const T={'当前笔记':'## 要点\n- 缓存穿透有三种解法：空值、布隆过滤器、参数校验 [1]\n- 布隆方案效果最好，成本中等 [1]\n\n## 待办\n- [ ] 补压测数据 [3]','本周笔记':'## 本周周报（11-02 ~ 11-08）\n- 新增 **7** 篇，修改 **12** 篇\n- 主题：Redis 缓存 [1]、K8s HPA [3]、接口规范 [2]\n\n> 建议：把 HPA 压测结论整理成一篇公开文章。','选中笔记本':'## 后端开发 · 42 篇\n| 主题 | 篇数 |\n|---|---|\n| Redis | 9 |\n| Spring | 14 |\n| 接口 | 6 |'};
+let sc='当前笔记',tok=0;MG.$('#sc').addEventListener('seg',e=>sc=e.detail);
+MG.$('#gen').onclick=()=>{const o=MG.$('#out');o.innerHTML='<p class="muted">⟳ 检索并生成中…</p>';setTimeout(()=>{o.innerHTML=MG.md(T[sc]).replace(/\[(\d)\]/g,'<span class="cite">[$1]</span>');tok+=1830;MG.$('#use').textContent=`本月用量：${tok.toLocaleString()} tokens`},700)};
+MG.$('#save').onclick=()=>MG.toast('已存为 notes/后端开发/AI-总结.md');MG.$('#copy').onclick=()=>MG.toast('已复制')}</script><script src="app.js"></script></body></html>

@@ -1,0 +1,38 @@
+/* mg-node 设计 token：颜色 / 圆角 / 间距 / 字体，支持暗色模式 */
+:root{
+  --c-primary:#5b6cff; --c-primary-strong:#4352e8; --c-primary-soft:#eef0ff; --c-primary-line:#d9dcff;
+  --c-brand-deep:#5b3cf5;
+  --c-bg:#eef0f8; --c-surface:#ffffff; --c-surface-2:#f6f7fb; --c-surface-3:#f0f1f6;
+  --c-text:#1f2433; --c-text-2:#555b6e; --c-muted:#8a90a2; --c-line:#eceef3; --c-line-strong:#dfe2ea;
+  --c-success:#1a9a5b; --c-success-soft:#e8f6ee; --c-warn:#b36b00; --c-warn-soft:#fff8ec; --c-danger:#d33; --c-danger-soft:#fff1f0;
+  --c-highlight:#fff2a8; --c-code-bg:#1f2433; --c-code-fg:#cfe;
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-pill:999px;
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px;
+  --f-sans:"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"SF Mono","JetBrains Mono","DejaVu Sans Mono",monospace;
+  --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-2xl:26px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.1); --shadow-md:0 12px 36px rgba(30,35,60,.18); --shadow-lg:0 30px 80px rgba(20,25,50,.3);
+  --dur:.18s;
+}
+[data-theme="dark"]{
+  --c-bg:#14161f; --c-surface:#1c1f2b; --c-surface-2:#222636; --c-surface-3:#2a2f42;
+  --c-text:#e8eaf2; --c-text-2:#b5bacb; --c-muted:#8088a0; --c-line:#2c3145; --c-line-strong:#3a4058;
+  --c-primary-soft:#272c52; --c-primary-line:#3b4290; --c-highlight:#5a5020; --c-warn-soft:#3a2f1a; --c-danger-soft:#3a1f22; --c-success-soft:#1b3428;
+}
+
+/* ---------- 个性化（与 git-note-tool-design 的 settings.tsx 对齐） ---------- */
+@font-face{font-family:"ZCOOL KuaiLe";src:url(assets/fonts/ZCOOLKuaiLe-Regular.ttf) format("truetype");font-display:swap}
+@font-face{font-family:"Caveat";src:url(assets/fonts/Caveat.ttf) format("truetype");font-display:swap}
+:root{
+  --f-hand:"ZCOOL KuaiLe","Caveat","Comic Sans MS",cursive;
+  /* 主题色 10 阶（app.js 按 accent 写入），默认 薄荷 emerald */
+  --accent-50:#ecfdf5;--accent-100:#d1fae5;--accent-200:#a7f3d0;--accent-300:#6ee7b7;--accent-400:#34d399;--accent-500:#10b981;--accent-600:#059669;--accent-700:#047857;--accent-800:#065f46;--accent-900:#064e3b;
+  --c-primary:var(--accent-600);--c-primary-strong:var(--accent-700);--c-primary-soft:var(--accent-50);--c-primary-line:var(--accent-200);--c-brand-deep:var(--accent-600);
+  --av-radius:50%; --ink:#3b342c;
+}
+/* 界面外观：经典(冷灰白) / 暖纸(手账纸张，默认) / 薄雾(青灰清新) */
+[data-appearance="paper"]{--c-bg:#f5f5f4;--c-surface:#fffdf7;--c-surface-2:#fafaf9;--c-surface-3:#f0eeeb;--c-line:#e7e5e4;--c-line-strong:#d6d3d1;--c-text:#292524;--c-text-2:#57534e;--c-muted:#78716c}
+[data-appearance="mist"]{--c-bg:#e6f0ee;--c-surface:#fbfefd;--c-surface-2:#f3f8f7;--c-surface-3:#e6f0ee;--c-line:#e6f0ee;--c-line-strong:#cfe0dd;--c-text:#2a3d3a;--c-text-2:#4a6b66;--c-muted:#5f8680}
+[data-hand="1"] body,[data-hand="1"] .field{font-family:var(--f-hand)}
+.hand{font-family:var(--f-hand)}
+.sketch-border{border:2px solid var(--ink);border-radius:255px 15px 225px 15px/15px 225px 15px 255px}

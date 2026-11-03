@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>退出同步 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body>
+<a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<div class="desk"><div data-shell></div></div><template id="tpl"><div id="ed" style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative"></div></template><div class="card" style="position:fixed;right:30px;bottom:50px;padding:14px;width:280px;font-size:13px;box-shadow:var(--shadow-md);z-index:50"><b>退出时自动同步</b><p class="muted" style="margin:6px 0 10px">按 ⌘Q 或点击按钮。超时 15 秒后会提示只保存在本地。</p><button class="btn btn--primary btn--sm" id="q">模拟 ⌘Q 退出</button></div>
+<script>window.page=MG=>{MG.editor(MG.$('#ed'));MG.$('#q').onclick=()=>MG.quit();setTimeout(()=>MG.quit(),300)}</script><script src="app.js"></script></body></html>

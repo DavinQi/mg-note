@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>Markdown 编辑器 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body>
+<a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<div class="desk"><div data-shell="nolist"></div></div><template id="tpl"><div id="ed" style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative"></div></template><div class="card" style="position:fixed;right:30px;bottom:50px;padding:12px 14px;width:280px;font-size:13px;box-shadow:var(--shadow-md);z-index:50"><b>试一试</b><div class="muted" style="line-height:1.8;margin-top:4px">⌘1 / ⌘2 / ⌘3 切换模式<br>工具栏按钮插入 Markdown<br>在编辑区行首输入 <kbd>/</kbd> 打开插入菜单<br>⌘⇧P 打开命令面板</div><button class="btn btn--sm" id="demoSlash" style="margin-top:8px">演示 / 菜单</button></div>
+<script>window.page=MG=>{const api=MG.editor(MG.$('#ed'),{mode:new URLSearchParams(location.search).get('mode')||'split'});MG.$('#demoSlash').onclick=()=>{api.setMode('split');api.openSlash()}}</script><script src="app.js"></script></body></html>

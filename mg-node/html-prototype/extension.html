@@ -1,0 +1,15 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>浏览器插件 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body>
+<a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<div class="desk" style="display:flex;justify-content:center;padding-top:60px"><div style="width:900px"><div class="card" style="height:46px;display:flex;align-items:center;padding:0 14px;gap:10px"><span class="muted">🔒 juejin.cn/post/redis-bloom-filter</span><span class="spacer"></span><img src="assets/avatars/fox.png" id="extIcon" class="avatar" style="width:26px;height:26px" alt=""></div>
+<div class="card" id="pop" style="width:380px;margin:8px 0 0 auto;padding:18px;box-shadow:var(--shadow-md)"><b style="font-size:16px">收藏到 mg-node</b><div class="muted">已通过本地桥接连接 Mac App ●</div>
+<div class="label">收藏方式</div><div class="seg seg--block" id="mode"><button class="seg__item is-active">正文</button><button class="seg__item">选中内容</button><button class="seg__item">整页</button><button class="seg__item">书签</button></div>
+<div class="label">标题</div><input class="field" value="布隆过滤器在 Redis 中的应用">
+<div class="label">笔记本（默认：📥 收集笔记）</div><select class="field"><option>📥 收集笔记</option><option>后端开发</option></select>
+<div class="label">标签</div><div id="tags"><span class="chip">redis ✕</span><span class="chip">bloom ✕</span><span class="chip chip--off">＋ 添加</span></div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px"><span class="switch is-on"></span>下载图片到 assets/ <span class="spacer"></span><span class="switch"></span>立即同步</div>
+<button class="btn btn--primary" id="save" style="width:100%;justify-content:center;margin-top:16px">保存 ⌘↵</button><div class="muted" id="prevw" style="margin-top:8px">预计：正文 2,340 字 · 4 张图片</div></div></div></div>
+<script>window.page=MG=>{const P={'正文':'预计：正文 2,340 字 · 4 张图片','选中内容':'预计：选中 312 字','整页':'预计：整页 HTML 快照 1.2 MB','书签':'预计：仅保存链接、标题和摘要'};
+MG.$('#mode').addEventListener('seg',e=>MG.$('#prevw').textContent=P[e.detail]);MG.$('#tags').onclick=e=>{if(e.target.textContent.includes('✕'))e.target.remove();else if(e.target.textContent.includes('添加'))e.target.insertAdjacentHTML('beforebegin','<span class="chip">新标签 ✕</span>')};
+MG.$('#save').onclick=()=>{MG.$('#save').textContent='✓ 已保存到 📥 收集笔记';MG.toast('已写入 notes/收集笔记/布隆过滤器在-redis-中的应用.md')}}</script><script src="app.js"></script></body></html>

@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>新建 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body>
+<a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<div class="desk"><div data-shell></div></div><template id="tpl"><div id="ed" style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative"></div></template>
+<script>window.page=MG=>{MG.editor(MG.$('#ed'));const k=new URLSearchParams(location.search).get('open');setTimeout(()=>k==='folder'?MG.newFolder():k==='file'?MG.newFile():MG.newMenu(),100)}</script><script src="app.js"></script><div class="card" style="position:fixed;right:30px;bottom:50px;padding:14px;width:290px;font-size:13px;box-shadow:var(--shadow-md);z-index:50"><b>新建：文件夹 / 文件</b><p class="muted" style="margin:6px 0 10px">⌘N 新建菜单 · ⌘⇧N 新建文件夹 · 侧栏分类可以拖动排序或移动</p><div style="display:flex;gap:6px"><button class="btn btn--sm" onclick="MG.newFolder()">📁 新建文件夹</button><button class="btn btn--sm" onclick="MG.newFile()">📄 新建文件</button><button class="btn btn--sm" onclick="localStorage.removeItem('mg.tree');MG.renderTree()">重置</button></div></div></body></html>

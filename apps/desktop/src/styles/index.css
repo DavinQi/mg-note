@@ -1,0 +1,25 @@
+@import './tokens.css';
+@import './components.css';
+@import './app.css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+  user-select: none;
+}
+
+input, textarea {
+  user-select: text;
+}

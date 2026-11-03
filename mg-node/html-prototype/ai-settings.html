@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>AI 设置 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body>
+<a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<div class="desk" style="display:flex;justify-content:center;align-items:flex-start;padding-top:40px"><div class="card" style="width:720px;padding:28px;box-shadow:var(--shadow-md)">
+<div style="display:flex;align-items:center"><b style="font-size:20px;flex:1">✨ AI 知识库助手</b><span class="muted" id="st" style="margin-right:10px">已关闭</span><span class="switch" id="en"></span></div>
+<p class="muted" style="margin-top:4px">默认关闭。使用你自己的 API Key，Key 只保存在 macOS 钥匙串，不会写进仓库。</p>
+<div id="cfg" style="opacity:.45;pointer-events:none;transition:opacity .2s">
+<div class="label">服务商（OpenAI 兼容）</div><div class="seg" id="prov"><button class="seg__item is-active">OpenAI</button><button class="seg__item">DeepSeek</button><button class="seg__item">通义千问</button><button class="seg__item">Ollama 本地</button><button class="seg__item">自定义</button></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><div class="label">Base URL</div><input class="field mono" id="base" value="https://api.openai.com/v1"></div><div><div class="label">API Key</div><input class="field" type="password" id="key" placeholder="sk-…（存入钥匙串）"></div>
+<div><div class="label">对话模型</div><input class="field" id="chat" value="gpt-4o-mini"></div><div><div class="label">向量模型</div><input class="field" id="emb" value="text-embedding-3-small"></div></div>
+<div class="label">索引范围</div><div><span class="chip is-active">后端开发</span><span class="chip is-active">前端工程</span><span class="chip">DevOps</span><span class="chip">📥 收集笔记</span></div>
+<div class="label">隐私排除</div><div style="font-size:13px;line-height:2"><span class="switch is-on"></span> 不索引带 <code>private: true</code> 的笔记 &nbsp; <span class="switch is-on"></span> 发送前脱敏邮箱 / 手机号 / IP</div>
+<div class="label">索引状态</div><div class="progress"><div class="progress__bar" id="ib"></div></div><div class="muted" id="it" style="margin-top:6px">尚未建立索引</div>
+<div class="modal__foot"><button class="btn" id="test">测试连接</button><button class="btn btn--primary" id="build">保存并建立索引</button></div></div></div></div>
+<script>window.page=MG=>{const cfg=MG.$('#cfg');MG.$('#en').addEventListener('toggle',e=>{cfg.style.opacity=e.detail?1:.45;cfg.style.pointerEvents=e.detail?'':'none';MG.$('#st').textContent=e.detail?'已开启':'已关闭'});
+const PV={OpenAI:['https://api.openai.com/v1','gpt-4o-mini','text-embedding-3-small'],DeepSeek:['https://api.deepseek.com/v1','deepseek-chat','（使用本地 bge-m3）'],'通义千问':['https://dashscope.aliyuncs.com/compatible-mode/v1','qwen-plus','text-embedding-v3'],'Ollama 本地':['http://127.0.0.1:11434/v1','qwen2.5:7b','bge-m3'],'自定义':['','','']};
+MG.$('#prov').addEventListener('seg',e=>{const p=PV[e.detail];['base','chat','emb'].forEach((k,i)=>MG.$('#'+k).value=p[i])});
+MG.$('#test').onclick=()=>MG.toast(MG.$('#key').value||MG.$('#base').value.includes('127.0.0.1')?'✓ 连接成功（演示）':'请先填写 API Key');
+MG.$('#build').onclick=()=>{let n=0;const t=setInterval(()=>{n+=8;if(n>=104){n=104;clearInterval(t);MG.$('#it').textContent='✓ 已索引 104 篇 · 1,862 个片段 · 之后按 git diff 增量更新'}else MG.$('#it').textContent=`正在索引 ${n}/104 …`;MG.$('#ib').style.width=n/104*100+'%'},120)}}</script><script src="app.js"></script></body></html>

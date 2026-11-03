@@ -1,0 +1,60 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>登录 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body><a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<style>
+.lg{display:grid;grid-template-columns:1.05fr 1fr;flex:1;min-height:0;position:relative}
+.lg__art{position:relative;background:#f6efe2;overflow:hidden;display:flex;flex-direction:column}
+.lg__art img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s}
+.lg__fade{position:absolute;inset:0;background:linear-gradient(to top,rgba(246,239,226,.95) 0%,rgba(246,239,226,0) 38%)}
+.lg__logo{position:relative;z-index:2;padding:24px;display:flex;align-items:center;gap:10px}
+.lg__mark{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.9);display:grid;place-items:center;font-weight:700;color:var(--accent-700);font-size:18px}
+.lg__name{background:rgba(255,255,255,.85);border-radius:8px;padding:4px 10px;color:#1f2433}
+.lg__foot{position:relative;z-index:2;margin-top:auto;padding:28px;color:#3b342c}
+.lg__quote{font-size:28px;line-height:1.4}
+.lg__nav{display:flex;align-items:center;gap:12px;margin-top:12px}
+.lg__arrow{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.8);border:1px solid rgba(59,52,44,.3);cursor:pointer;color:#3b342c}
+.lg__dot{height:8px;width:8px;border-radius:4px;background:rgba(59,52,44,.3);border:0;cursor:pointer;transition:all .3s;padding:0}.lg__dot.is-active{width:24px;background:#3b342c}
+.lg__form{padding:40px;display:flex;flex-direction:column;justify-content:center;background:var(--c-surface);position:relative}
+.lg__cz{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 12px;border-radius:999px;border:1px solid var(--c-line-strong);background:none;color:var(--c-text-2);cursor:pointer;font-family:inherit}
+.prov{border:1px solid var(--c-line-strong);border-radius:12px;padding:14px;text-align:left;cursor:pointer;background:none;color:inherit;font-family:inherit;transition:all .15s}
+.prov.is-active{border-color:var(--accent-500);box-shadow:0 0 0 2px var(--accent-100);background:color-mix(in srgb,var(--accent-50) 50%,transparent)}
+.prov i{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-style:normal;font-size:14px}
+.prov b{display:block;margin-top:8px;font-weight:500}
+.mth{display:flex;gap:4px;margin-top:20px;background:var(--c-surface-3);border-radius:8px;padding:4px;font-size:14px}.mth button{flex:1;padding:6px;border-radius:6px;border:0;background:none;color:var(--c-muted);cursor:pointer;font-family:inherit;font-size:14px}.mth button.is-active{background:var(--c-surface);color:var(--c-text);box-shadow:var(--shadow-sm)}
+.lg__go{margin-top:24px;width:100%;background:var(--accent-600);color:#fff;border:0;border-radius:12px;padding:12px;font-weight:500;font-size:15px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}.lg__go:hover{background:var(--accent-700)}
+@keyframes spin{to{transform:rotate(360deg)}}.spin{display:inline-block;animation:spin 1s linear infinite}
+</style>
+<div class="desk" style="display:flex;align-items:center;justify-content:center"><div class="win" style="width:min(1152px,100%);height:auto;min-height:0">
+<div class="titlebar" style="height:36px"><div class="dots"><i></i><i></i><i></i></div><span class="spacer"></span><span class="muted">mg-node — 登录</span><span class="spacer"></span><span style="width:60px"></span></div>
+<div class="lg" style="height:640px">
+ <div class="lg__art"><img class="bg" id="art" alt=""><div class="lg__fade"></div>
+  <div class="lg__logo"><div class="lg__mark hand sketch-border">mg</div><div class="lg__name"><b style="font-size:14px">mg-node</b><div style="font-size:10px;color:#64748b">my-git-note · 自有笔记工具</div></div></div>
+  <div class="lg__foot"><p class="hand lg__quote" id="quote"></p><div class="lg__nav"><button class="lg__arrow" id="prev">‹</button><div id="dots" style="display:flex;gap:6px"></div><button class="lg__arrow" id="next">›</button><span style="font-size:12px;opacity:.7" id="artLabel"></span></div></div></div>
+ <div class="lg__form">
+  <button class="lg__cz" id="czBtn"><span style="color:var(--accent-600)">🎨</span> 个性化</button>
+  <div style="display:flex;align-items:center;gap:12px"><img class="avatar" style="width:46px;height:46px" alt="" src=""><div><h2 class="hand" style="font-size:24px;font-weight:400;line-height:1.2">你好，<span id="nick"></span> ~</h2><p class="muted">登录并连接你的私密笔记仓库 <code style="background:var(--c-surface-3);padding:0 4px;border-radius:4px">my-git-note</code></p></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px" id="provs">
+   <button class="prov is-active" data-p="GitHub"><i style="background:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="18" r="2.5"/><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M6 8.5v7M18 8.5c0 5-6 4-11.5 7.5"/></svg></i><b>GitHub</b><span class="muted">海外 · GitHub Pages</span></button>
+   <button class="prov" data-p="Gitee"><i style="background:#dc2626">G</i><b>Gitee</b><span class="muted">国内 · Gitee Pages <span class="tip" data-tip="Gitee Pages 已下线：Gitee 只做私有存储，公开发布走 GitHub Pages" style="color:var(--c-warn)">ⓘ</span></span></button></div>
+  <div class="mth" id="mth"><button class="is-active" data-m="oauth">授权登录(推荐)</button><button data-m="token">访问令牌 Token</button></div>
+  <div id="mBody"></div>
+  <button class="lg__go" id="go"></button>
+  <p class="muted" style="text-align:center;margin-top:12px;font-size:11px">头像、主题与插画可点右上角「个性化」随时更换</p>
+  <div class="popover" id="loginPop" style="display:none;top:56px;right:16px;max-height:calc(100% - 72px)"><div style="display:flex;align-items:center;margin-bottom:16px"><b>个性化设置</b><span class="spacer"></span><button class="btn btn--ghost btn--sm" id="popX">✕</button></div><div id="popBody"></div></div>
+ </div></div></div></div>
+<script>window.page=MG=>{let prov='GitHub',m='oauth',loading=false,t;
+let cur=null;const L=()=>MG.getArts();
+const drawArt=()=>{const S=MG.getS(),A=L();let i=A.findIndex(a=>a.id===S.loginArt);if(i<0)i=0;const a=A[i];cur=a.id;const img=MG.$('#art');if(img.getAttribute('src')!==a.src)img.src=a.src;img.alt=a.name;MG.$('#quote').textContent=a.slogan||'';MG.$('#artLabel').textContent=a.name+(S.carousel==='pin'?' · 📌 固定':'');
+ MG.$('.lg__nav').style.display=S.carousel==='pin'||A.length<2?'none':'flex';
+ MG.$('#dots').innerHTML=A.map(x=>`<button class="lg__dot ${x.id===a.id?'is-active':''}" data-a="${x.id}" title="${x.name}"></button>`).join('');MG.$('#nick').textContent=S.nickname||'朋友';return i};
+const go=d=>{const A=L(),i=drawArt();let j=(i+d+A.length)%A.length;if(d>0&&MG.getS().artOrder==='random'&&A.length>2){do{j=Math.floor(Math.random()*A.length)}while(j===i)}MG.updateS({loginArt:A[j].id})};
+MG.$('#prev').onclick=()=>go(-1);MG.$('#next').onclick=()=>go(1);MG.$('#dots').onclick=e=>{if(e.target.dataset.a)MG.updateS({loginArt:e.target.dataset.a})};
+const body=()=>{MG.$('#mBody').innerHTML=m==='token'?`<div style="margin-top:16px;position:relative"><span style="position:absolute;left:12px;top:9px;color:var(--c-muted)">🔑</span><input class="field" type="password" style="padding-left:36px" placeholder="粘贴 ${prov} Personal Access Token"><p class="muted" style="margin-top:8px">🔒 令牌仅保存在 macOS 钥匙串(Keychain)中</p></div>`:`<p class="muted" style="margin-top:16px">将打开浏览器完成 OAuth 授权(Device Flow),授权范围:repo(私有仓库读写)</p>`;
+ MG.$('#go').innerHTML=loading?`<span class="spin">◌</span> 正在连接 ${prov} 并拉取笔记…`:`使用 ${prov} 登录`};body();
+MG.$('#provs').onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;prov=b.dataset.p;MG.$$('.prov').forEach(x=>x.classList.toggle('is-active',x===b));body()};
+MG.$('#mth').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;m=b.dataset.m;MG.$$('#mth button').forEach(x=>x.classList.toggle('is-active',x===b));body()};
+MG.$('#go').onclick=()=>{if(loading)return;loading=true;body();setTimeout(()=>location.href='repo-select.html',1200)};
+const pop=MG.$('#loginPop');MG.$('#czBtn').onclick=()=>{pop.style.display=pop.style.display==='none'?'block':'none';if(pop.style.display==='block')MG.customizePanel(MG.$('#popBody'),{showArt:true})};MG.$('#popX').onclick=()=>pop.style.display='none';
+drawArt();window.addEventListener('storage',drawArt);let last=Date.now();
+t=setInterval(()=>{const S=MG.getS();drawArt();if(S.carousel!=='auto'||pop.style.display!=='none'||loading)return last=Date.now();if(Date.now()-last>=S.interval*1000){last=Date.now();go(1)}},500);
+new MutationObserver(drawArt).observe(document.documentElement,{attributes:true,attributeFilter:['data-appearance','style']});}</script><script src="app.js"></script></body></html>

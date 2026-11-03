@@ -1,0 +1,14 @@
+{
+  "name": "my-git-note",
+  "version": "0.1.0",
+  "private": true,
+  "description": "mg-node (my-git-note): macOS personal note-taking tool backed by GitHub/Gitee private repositories",
+  "scripts": {
+    "dev": "pnpm --filter desktop dev",
+    "build": "pnpm --filter desktop build",
+    "tauri": "pnpm --filter desktop tauri",
+    "tauri:dev": "pnpm --filter desktop tauri dev",
+    "tauri:build": "pnpm --filter desktop tauri build"
+  },
+  "packageManager": "pnpm@10.14.0"
+}

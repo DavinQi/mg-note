@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node
+node_modules/
+dist/
+build/
+.npm
+.pnpm-debug.log*
+
+# Rust / Cargo / Tauri
+target/
+src-tauri/target/
+Cargo.lock
+
+# Environment & Secrets
+.env
+.env.local
+*.pem
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

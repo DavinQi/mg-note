@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>发布 · mg-node 原型</title>
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="components.css"><link rel="stylesheet" href="app.css">
+<style></style></head><body>
+<a href="index.html" class="btn btn--sm" style="position:fixed;left:10px;bottom:10px;z-index:400">← 原型目录</a>
+<div class="desk"><div data-shell></div></div><template id="tpl"><div id="ed" style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative"></div></template><div class="modal-mask" id="pub"><div class="modal" style="width:520px"><div class="modal__title">🌐 公开这篇笔记？</div><p class="muted" style="margin-top:4px">通过 GitHub Pages 发布，仓库本身仍是私有的</p>
+<div class="label">公开地址</div><div class="field mono" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">https://davin-dev.github.io/notes/redis-cache</div>
+<div class="label">发布前检查</div><div style="font-size:13px;line-height:2">✓ 未发现密钥 / Token<br>✓ 3 张图片会一起发布<br><span style="color:var(--c-warn)">⚠ 第 18 行包含内网地址 10.0.3.12</span> <button class="btn btn--sm" id="fix">替换为 ***</button></div>
+<div class="label">选项</div><div style="display:flex;gap:10px;align-items:center;font-size:13px"><span class="switch is-on"></span> 显示更新时间 <span class="switch"></span> 允许搜索引擎收录</div>
+<div class="modal__foot"><button class="btn" data-x>取消</button><button class="btn btn--primary" id="doPub">确认公开</button></div></div></div>
+<script>window.page=MG=>{const api=MG.editor(MG.$('#ed'),{onPublish:(sw,bd)=>{if(sw.classList.contains('is-on'))MG.togglePub(sw,bd,false);else MG.$('#pub').classList.add('is-open')}});
+const m=MG.$('#pub');m.classList.add('is-open');m.onclick=e=>{if(e.target===m||e.target.matches('[data-x]'))m.classList.remove('is-open')};
+MG.$('#fix').onclick=e=>{e.target.parentNode.querySelector('span').textContent='✓ 内网地址已替换为 ***';e.target.remove()};
+MG.$('#doPub').onclick=()=>{m.classList.remove('is-open');MG.togglePub(MG.$('#pubSw'),MG.$('#pubBadge'),true)}}</script><script src="app.js"></script></body></html>
