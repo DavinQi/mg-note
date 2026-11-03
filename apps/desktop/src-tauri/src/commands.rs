@@ -3,7 +3,7 @@ use tauri::AppHandle;
 use crate::models::{NoteFileItem, Settings, SyncStatus};
 use crate::storage::{get_repos_dir, load_settings, open_external, save_settings, scan_notebooks_tree};
 use crate::keychain::{delete_token, get_token, save_token};
-use crate::git_ops::{commit_all, get_sync_status, open_or_init_repo};
+use crate::git_ops::{clone_or_open_remote_repo, commit_all, get_sync_status, open_or_init_repo, sync_with_remote};
 
 #[tauri::command]
 pub fn get_settings() -> Settings {
@@ -28,6 +28,29 @@ pub fn read_keychain_token(provider: String, username: String) -> Result<Option<
 #[tauri::command]
 pub fn remove_keychain_token(provider: String, username: String) -> Result<(), String> {
     delete_token(&provider, &username)
+}
+
+#[tauri::command]
+pub fn clone_remote_repository(remote_url: String, repo_name: String, token: Option<String>) -> Result<(), String> {
+    let repo_path = get_repos_dir().join(&repo_name);
+    clone_or_open_remote_repo(&remote_url, &repo_path, token.as_deref())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_local_repos() -> Result<Vec<String>, String> {
+    let repos_dir = get_repos_dir();
+    let mut names = Vec::new();
+    if let Ok(entries) = fs::read_dir(repos_dir) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                if let Some(name) = entry.file_name().to_str() {
+                    names.push(name.to_string());
+                }
+            }
+        }
+    }
+    Ok(names)
 }
 
 #[tauri::command]
@@ -96,6 +119,7 @@ pub fn perform_git_sync(repo_name: String) -> Result<SyncStatus, String> {
     let repo = open_or_init_repo(&repo_path)?;
     let msg = format!("mg-node: auto sync {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
     let _ = commit_all(&repo, &msg);
+    let _ = sync_with_remote(&repo_path);
     get_sync_status(&repo)
 }
 

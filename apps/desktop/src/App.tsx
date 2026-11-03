@@ -12,6 +12,8 @@ export const AppContent: React.FC = () => {
   const [step, setStep] = useState<AppStep>('login');
   const [provider, setProvider] = useState<string>('GitHub');
   const [username, setUsername] = useState<string>('Alex');
+  const [token, setToken] = useState<string | undefined>(undefined);
+  const [initialRepos, setInitialRepos] = useState<any[]>([]);
   const [repoName, setRepoName] = useState<string>('my-git-note');
   const [showQuitSync, setShowQuitSync] = useState(false);
 
@@ -33,9 +35,11 @@ export const AppContent: React.FC = () => {
     };
   }, []);
 
-  const handleLoginSuccess = (p: string, u: string) => {
+  const handleLoginSuccess = (p: string, u: string, t?: string, repos: any[] = []) => {
     setProvider(p);
     setUsername(u);
+    setToken(t);
+    setInitialRepos(repos);
     setStep('repo_select');
   };
 
@@ -58,21 +62,23 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen flex flex-col overflow-hidden">
+    <div className="w-screen h-screen flex flex-col overflow-hidden bg-white dark:bg-slate-900">
       {/* If in login or repo_select, show titlebar on top */}
       {step !== 'main' && (
         <Titlebar
-          title={step === 'login' ? 'mg-node — 登录' : 'mg-node — 选择笔记仓库'}
+          title={step === 'login' ? 'mg-node — 登录' : 'mg-node — 选择与拉取笔记仓库'}
         />
       )}
 
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-hidden relative flex flex-col min-h-0 w-full h-full">
         {step === 'login' && <LoginView onLoginSuccess={handleLoginSuccess} />}
 
         {step === 'repo_select' && (
           <RepoSelectView
             provider={provider}
             username={username}
+            token={token}
+            initialRepos={initialRepos}
             onRepoSelected={handleRepoSelected}
             onBack={() => setStep('login')}
           />

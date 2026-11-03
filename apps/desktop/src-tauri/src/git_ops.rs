@@ -1,5 +1,6 @@
 use git2::{IndexAddOption, Repository, Signature, StatusOptions};
 use std::path::Path;
+use std::process::Command;
 use crate::models::SyncStatus;
 
 pub fn open_or_init_repo(path: &Path) -> Result<Repository, String> {
@@ -7,6 +8,46 @@ pub fn open_or_init_repo(path: &Path) -> Result<Repository, String> {
         Repository::open(path).map_err(|e| e.to_string())
     } else {
         Repository::init(path).map_err(|e| e.to_string())
+    }
+}
+
+pub fn clone_or_open_remote_repo(
+    remote_url: &str,
+    target_path: &Path,
+    token: Option<&str>,
+) -> Result<Repository, String> {
+    if target_path.join(".git").exists() {
+        return Repository::open(target_path).map_err(|e| e.to_string());
+    }
+
+    // Build authenticated URL if token provided
+    let auth_url = if let Some(tok) = token {
+        if !tok.is_empty() && remote_url.starts_with("https://") {
+            let without_https = &remote_url["https://".len()..];
+            format!("https://x-access-token:{}@{}", tok, without_https)
+        } else {
+            remote_url.to_string()
+        }
+    } else {
+        remote_url.to_string()
+    };
+
+    // Use /usr/bin/git to clone for maximum compatibility with network proxies & SSL
+    let output = Command::new("git")
+        .arg("clone")
+        .arg(&auth_url)
+        .arg(target_path)
+        .output();
+
+    match output {
+        Ok(out) => {
+            if !out.status.success() {
+                let err_msg = String::from_utf8_lossy(&out.stderr);
+                return Err(format!("Git 克隆失败: {}", err_msg));
+            }
+            Repository::open(target_path).map_err(|e| e.to_string())
+        }
+        Err(e) => Err(format!("无法执行 git 命令: {}", e)),
     }
 }
 
@@ -75,4 +116,26 @@ pub fn commit_all(repo: &Repository, message: &str) -> Result<String, String> {
         .map_err(|e| e.to_string())?;
 
     Ok(commit_id.to_string())
+}
+
+pub fn sync_with_remote(repo_path: &Path) -> Result<(), String> {
+    // If remote origin exists, try git pull and git push
+    let _ = Command::new("git")
+        .current_dir(repo_path)
+        .args(["pull", "--rebase"])
+        .output();
+
+    let push_res = Command::new("git")
+        .current_dir(repo_path)
+        .args(["push"])
+        .output();
+
+    if let Ok(res) = push_res {
+        if !res.status.success() {
+            let err = String::from_utf8_lossy(&res.stderr);
+            log::warn!("Git push notice: {}", err);
+        }
+    }
+
+    Ok(())
 }

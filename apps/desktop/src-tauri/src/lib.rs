@@ -19,6 +19,8 @@ pub fn run() {
             commands::store_keychain_token,
             commands::read_keychain_token,
             commands::remove_keychain_token,
+            commands::clone_remote_repository,
+            commands::list_local_repos,
             commands::list_notebooks_tree,
             commands::read_note_content,
             commands::save_note_content,

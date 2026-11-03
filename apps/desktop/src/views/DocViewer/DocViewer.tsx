@@ -13,76 +13,91 @@ export const DocViewer: React.FC<DocViewerProps> = ({ title, kind, onOpenExterna
   const isPdf = kind === 'pdf';
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-950 select-text">
-      {/* Top Banner with External Launch */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">{isWord ? '📘' : isPpt ? '📙' : '📕'}</span>
+    <div className="wb-main-canvas">
+      {/* Top Banner Toolbar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 20px',
+          borderBottom: '1px solid var(--c-line, #eceef3)',
+          background: 'var(--c-surface, #ffffff)',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '20px' }}>{isWord ? '📘' : isPpt ? '📙' : '📕'}</span>
           <div>
-            <div className="font-semibold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              {title}
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">
-                {kind.toUpperCase()}
-              </span>
+            <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--c-text, #1f2433)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>{title}</span>
+              <span className="wb-kind-tag">{kind.toUpperCase()}</span>
             </div>
-            <div className="text-[11px] text-slate-400">只读高保真渲染模式 · 批注已分离存储</div>
+            <div style={{ fontSize: '11px', color: 'var(--c-muted, #8a90a2)', marginTop: '2px' }}>
+              高保真只读预览模式 · 批注已分离存储至 sidecar
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {!isPdf ? (
             <button
               onClick={onOpenExternal}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-white shadow-sm hover:shadow flex items-center gap-1.5 transition-all"
-              style={{ background: 'var(--accent-600, #059669)' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'var(--accent-600, #059669)',
+                color: '#ffffff',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(5, 150, 105, 0.2)',
+              }}
             >
               <span>在 {isWord ? 'WPS / Word' : 'Keynote / PPT'} 中编辑</span>
               <span>↗</span>
             </button>
           ) : (
-            <div className="flex items-center gap-1 text-xs">
-              <button className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200">
-                🖊 画笔
-              </button>
-              <button className="px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">
-                🖍 高亮
-              </button>
-              <button className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200">
-                💬 批注便签
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button className="btn btn--sm">🖊 画笔</button>
+              <button className="btn btn--sm btn--warn">🖍 高亮</button>
+              <button className="btn btn--sm">💬 批注便签</button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Main Document Content Canvas */}
-      <div className="flex-1 overflow-y-auto p-12 flex flex-col items-center">
-        <div className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 min-h-[700px] p-12 flex flex-col">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
-            <div className="text-xs text-slate-400 mt-1">
-              创建于 2026-11-03 · 外部编辑保存后将通过 macOS FSEvents 自动热刷新
+      {/* Main Document Content Canvas (A4 sheet preview) */}
+      <div className="wb-doc-viewport">
+        <div className="wb-a4-sheet">
+          <div style={{ borderBottom: '1px solid var(--c-line, #eceef3)', paddingBottom: '16px', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--c-text, #1f2433)' }}>
+              {title}
+            </h1>
+            <div style={{ fontSize: '11px', color: 'var(--c-muted, #8a90a2)' }}>
+              文档格式：{kind.toUpperCase()} · 外部编辑保存后将通过 macOS FSEvents 自动热刷新与索引
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 text-center py-12">
-            <div className="text-5xl mb-4">{isWord ? '📄' : isPpt ? '📊' : '📑'}</div>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
-              {isWord
-                ? 'DOCX 高保真文档只读预览'
-                : isPpt
-                ? 'PPTX 演示文稿浏览'
-                : 'PDF 矢量文档预览'}
-            </p>
-            <p className="text-xs text-slate-400 max-w-sm mb-6 leading-relaxed">
-              为了确保文档格式 100% 不发生版面变形与错乱，点击右上角按钮即可无缝调用系统本机应用进行修改并自动写回私有仓库。
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', textAlign: 'center' }}>
+            <div style={{ fontSize: '56px', marginBottom: '16px' }}>{isWord ? '📄' : isPpt ? '📊' : '📑'}</div>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--c-text, #1f2433)', marginBottom: '8px' }}>
+              {isWord ? 'DOCX 文档只读预览' : isPpt ? 'PPTX 幻灯片浏览' : 'PDF 矢量文档预览'}
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--c-muted, #8a90a2)', maxWidth: '420px', lineHeight: 1.6, marginBottom: '24px' }}>
+              为确保文档排版、公式与图表 100% 不发生版面变形与错乱，点击右上角即可无缝调用系统本机应用进行修改并自动写回仓库。
             </p>
             {!isPdf && (
               <button
                 onClick={onOpenExternal}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="btn btn--sm"
+                style={{ padding: '8px 16px', borderRadius: '8px' }}
               >
-                打开本机默认程序编辑 ↗
+                打开本机默认程序进行编辑 ↗
               </button>
             )}
           </div>

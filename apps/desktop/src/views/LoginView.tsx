@@ -4,15 +4,16 @@ import { Avatar } from '../components/Avatar';
 import { CustomizePanel } from '../components/CustomizePanel';
 
 interface LoginViewProps {
-  onLoginSuccess: (provider: string, user: string) => void;
+  onLoginSuccess: (provider: string, user: string, token?: string, repos?: any[]) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const { settings, updateSettings, getArts } = useSettings();
   const [provider, setProvider] = useState<'GitHub' | 'Gitee'>('GitHub');
-  const [method, setMethod] = useState<'oauth' | 'token'>('oauth');
+  const [method, setMethod] = useState<'oauth' | 'token'>('token');
   const [tokenInput, setTokenInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [showCustomize, setShowCustomize] = useState(false);
 
   const arts = getArts();
@@ -54,14 +55,107 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     updateSettings({ loginArt: arts[nextIndex].id });
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (loading) return;
+    setErrorMessage('');
     setLoading(true);
-    // Simulate GitHub / Gitee login
+
+    const token = tokenInput.trim();
+
+    // 1. 如果用户输入了真实 Token，调用官方 API 进行真实鉴权与仓库拉取
+    if (token) {
+      try {
+        if (provider === 'GitHub') {
+          // 调用 GitHub API 获取用户信息
+          const userRes = await fetch('https://api.github.com/user', {
+            headers: {
+              Authorization: `token ${token}`,
+              Accept: 'application/vnd.github.v3+json',
+            },
+          });
+
+          if (!userRes.ok) {
+            throw new Error(`GitHub Token 校验失败 (${userRes.status})，请检查 Token 权限 (需勾选 repo 范围)`);
+          }
+
+          const userData = await userRes.json();
+          const username = userData.login;
+          const nickname = userData.name || userData.login;
+
+          // 调用 GitHub API 获取真实的仓库列表
+          const reposRes = await fetch(
+            'https://api.github.com/user/repos?affiliation=owner&sort=updated&per_page=100',
+            {
+              headers: {
+                Authorization: `token ${token}`,
+                Accept: 'application/vnd.github.v3+json',
+              },
+            }
+          );
+
+          let realRepos: any[] = [];
+          if (reposRes.ok) {
+            realRepos = await reposRes.json();
+          }
+
+          // 将 Token 安全保存至 macOS Keychain
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('store_keychain_token', {
+              provider: 'github',
+              username,
+              token,
+            });
+          } catch (_) {}
+
+          updateSettings({ nickname });
+          setLoading(false);
+          onLoginSuccess(provider, username, token, realRepos);
+          return;
+        } else {
+          // Gitee Token 验证
+          const userRes = await fetch(`https://gitee.com/api/v5/user?access_token=${token}`);
+          if (!userRes.ok) {
+            throw new Error(`Gitee Token 校验失败 (${userRes.status})`);
+          }
+          const userData = await userRes.json();
+          const username = userData.login;
+          const nickname = userData.name || userData.login;
+
+          const reposRes = await fetch(
+            `https://gitee.com/api/v5/user/repos?access_token=${token}&sort=updated&per_page=100`
+          );
+          let realRepos: any[] = [];
+          if (reposRes.ok) {
+            realRepos = await reposRes.json();
+          }
+
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('store_keychain_token', {
+              provider: 'gitee',
+              username,
+              token,
+            });
+          } catch (_) {}
+
+          updateSettings({ nickname });
+          setLoading(false);
+          onLoginSuccess(provider, username, token, realRepos);
+          return;
+        }
+      } catch (err: any) {
+        setLoading(false);
+        setErrorMessage(err.message || '连接失败，请检查网络或 Token');
+        return;
+      }
+    }
+
+    // 2. 如果没有填 Token 或选择 Device Flow/本地模式，直接进入仓库选择配置
     setTimeout(() => {
       setLoading(false);
       onLoginSuccess(provider, settings.nickname || 'Alex');
-    }, 1200);
+    }, 600);
   };
 
   return (
@@ -329,7 +423,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </button>
 
           {/* Greeting */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
             <Avatar size={48} />
             <div>
               <h2
@@ -368,13 +462,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: '12px',
-              marginBottom: '18px',
+              marginBottom: '16px',
             }}
           >
             <button
-              onClick={() => setProvider('GitHub')}
+              onClick={() => {
+                setProvider('GitHub');
+                setErrorMessage('');
+              }}
               style={{
-                padding: '14px',
+                padding: '12px',
                 borderRadius: '12px',
                 textAlign: 'left',
                 cursor: 'pointer',
@@ -417,9 +514,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </button>
 
             <button
-              onClick={() => setProvider('Gitee')}
+              onClick={() => {
+                setProvider('Gitee');
+                setErrorMessage('');
+              }}
               style={{
-                padding: '14px',
+                padding: '12px',
                 borderRadius: '12px',
                 textAlign: 'left',
                 cursor: 'pointer',
@@ -484,28 +584,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               borderRadius: '8px',
               background: 'var(--c-surface-3, #f0f1f6)',
               fontSize: '12px',
-              marginBottom: '16px',
+              marginBottom: '14px',
             }}
           >
-            <button
-              onClick={() => setMethod('oauth')}
-              style={{
-                flex: 1,
-                padding: '6px 0',
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: '12px',
-                fontWeight: method === 'oauth' ? 600 : 400,
-                background: method === 'oauth' ? 'var(--c-surface, #ffffff)' : 'transparent',
-                color: method === 'oauth' ? 'var(--c-text, #1f2433)' : 'var(--c-muted, #8a90a2)',
-                boxShadow: method === 'oauth' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.15s',
-              }}
-            >
-              授权登录(推荐)
-            </button>
             <button
               onClick={() => setMethod('token')}
               style={{
@@ -523,21 +604,32 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 transition: 'all 0.15s',
               }}
             >
-              访问令牌 Token
+              访问令牌 Token (真实鉴权与拉取)
+            </button>
+            <button
+              onClick={() => setMethod('oauth')}
+              style={{
+                flex: 1,
+                padding: '6px 0',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '12px',
+                fontWeight: method === 'oauth' ? 600 : 400,
+                background: method === 'oauth' ? 'var(--c-surface, #ffffff)' : 'transparent',
+                color: method === 'oauth' ? 'var(--c-text, #1f2433)' : 'var(--c-muted, #8a90a2)',
+                boxShadow: method === 'oauth' ? 'var(--shadow-sm)' : 'none',
+                transition: 'all 0.15s',
+              }}
+            >
+              免密 / 本地模式
             </button>
           </div>
 
           {/* Method body */}
-          <div style={{ minHeight: '60px', marginBottom: '20px' }}>
-            {method === 'oauth' ? (
-              <p style={{ fontSize: '12px', color: 'var(--c-muted, #8a90a2)', lineHeight: 1.6, margin: 0 }}>
-                将打开默认浏览器通过 OAuth 设备流 (Device Flow) 安全授权，授权范围：
-                <span style={{ color: 'var(--accent-600, #059669)', fontFamily: 'var(--f-mono)' }}>
-                  repo
-                </span>{' '}
-                (私有仓库读写权限)。
-              </p>
-            ) : (
+          <div style={{ minHeight: '62px', marginBottom: '16px' }}>
+            {method === 'token' ? (
               <div>
                 <div style={{ position: 'relative' }}>
                   <span
@@ -553,9 +645,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   </span>
                   <input
                     type="password"
-                    placeholder={`粘贴 ${provider} Personal Access Token`}
+                    placeholder={`粘贴 ${provider} Personal Access Token (如 ghp_...)`}
                     value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
+                    onChange={(e) => {
+                      setTokenInput(e.target.value);
+                      setErrorMessage('');
+                    }}
                     className="field"
                     style={{
                       paddingLeft: '36px',
@@ -563,18 +658,52 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     }}
                   />
                 </div>
-                <p
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--c-muted)',
-                    margin: '6px 0 0 0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <span>🔒</span> 令牌仅加密保存在 macOS 钥匙串 (Keychain) 中
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--c-muted)',
+                      margin: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <span>🔒</span> 令牌将安全加密保存在 macOS 钥匙串中
+                  </p>
+                  <a
+                    href={
+                      provider === 'GitHub'
+                        ? 'https://github.com/settings/tokens/new?scopes=repo&description=mg-node'
+                        : 'https://gitee.com/profile/personal_access_tokens/new'
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '11px', color: 'var(--accent-600)', textDecoration: 'none' }}
+                  >
+                    获取 Token ↗
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: '12px', color: 'var(--c-muted, #8a90a2)', lineHeight: 1.6, margin: 0 }}>
+                无需输入 Token，您可在下一步直接填入任意 Git 仓库地址或创建本地离线仓库使用。
+              </p>
+            )}
+
+            {errorMessage && (
+              <div
+                style={{
+                  marginTop: '8px',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                  fontSize: '11px',
+                }}
+              >
+                ⚠ {errorMessage}
               </div>
             )}
           </div>
@@ -603,10 +732,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           >
             {loading ? (
               <>
-                <span className="inline-block animate-spin">◌</span> 正在连接 {provider} 并拉取笔记…
+                <span className="inline-block animate-spin">◌</span> 正在验证 {provider} 并拉取真实仓库…
               </>
             ) : (
-              `使用 ${provider} 登录`
+              `连接 ${provider} 并继续 ➔`
             )}
           </button>
 

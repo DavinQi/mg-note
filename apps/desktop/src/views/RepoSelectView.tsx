@@ -1,62 +1,104 @@
 import React, { useState } from 'react';
 import { Avatar } from '../components/Avatar';
-import { useSettings } from '../context/SettingsContext';
 
 interface RepoSelectViewProps {
   provider: string;
   username: string;
+  token?: string;
+  initialRepos?: any[];
   onRepoSelected: (repoName: string) => void;
   onBack: () => void;
-}
-
-interface RepoOption {
-  name: string;
-  description: string;
-  isPrivate: boolean;
-  updatedAt: string;
 }
 
 export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
   provider,
   username,
+  token,
+  initialRepos = [],
   onRepoSelected,
   onBack,
 }) => {
-  const { settings } = useSettings();
-  const [activeTab, setActiveTab] = useState<'notes' | 'pages'>('notes');
-  const [selectedRepo, setSelectedRepo] = useState('my-git-note');
-  const [newRepoName, setNewRepoName] = useState('my-git-note');
-  const [isCreatingNew, setIsCreatingNew] = useState(true);
+  const [mode, setMode] = useState<'cloud' | 'url' | 'new'>(
+    initialRepos.length > 0 ? 'cloud' : 'url'
+  );
+  const [selectedRepo, setSelectedRepo] = useState(
+    initialRepos[0]?.name || 'my-git-note'
+  );
+  const [cloneUrl, setCloneUrl] = useState('');
+  const [customRepoName, setCustomRepoName] = useState('my-git-note');
   const [loading, setLoading] = useState(false);
+  const [statusText, setStatusText] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const mockRepos: RepoOption[] = [
-    {
-      name: 'personal-vault',
-      description: '日常碎片记录与备忘',
-      isPrivate: true,
-      updatedAt: '2 天前',
-    },
-    {
-      name: 'backend-knowledge',
-      description: '后端架构设计与微服务笔记',
-      isPrivate: true,
-      updatedAt: '3 周前',
-    },
-    {
-      name: 'open-source-demos',
-      description: '公开开源代码样例（公开仓库不可作为笔记库）',
-      isPrivate: false,
-      updatedAt: '1 个月前',
-    },
-  ];
-
-  const handleStart = () => {
+  const handleStart = async () => {
+    if (loading) return;
+    setErrorMessage('');
     setLoading(true);
-    const repoToUse = isCreatingNew ? newRepoName : selectedRepo;
-    setTimeout(() => {
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+
+      if (mode === 'url') {
+        const url = cloneUrl.trim();
+        if (!url) {
+          throw new Error('请输入有效的 Git 远程仓库地址');
+        }
+
+        // Derive repo name from URL (e.g. https://github.com/user/my-note.git -> my-note)
+        const parts = url.replace(/\.git$/, '').split('/');
+        const derivedName = parts[parts.length - 1] || 'remote-notes';
+
+        setStatusText(`正在从 ${url} 真实执行 git clone…`);
+
+        await invoke('clone_remote_repository', {
+          remoteUrl: url,
+          repoName: derivedName,
+          token: token || null,
+        });
+
+        setStatusText('克隆完成，正在建立笔记索引…');
+        setTimeout(() => {
+          setLoading(false);
+          onRepoSelected(derivedName);
+        }, 600);
+        return;
+      }
+
+      if (mode === 'cloud') {
+        const repoObj = initialRepos.find((r) => r.name === selectedRepo);
+        const remoteUrl = repoObj?.clone_url || repoObj?.html_url || `https://github.com/${username}/${selectedRepo}.git`;
+
+        setStatusText(`正在拉取私有仓库 ${selectedRepo}…`);
+
+        await invoke('clone_remote_repository', {
+          remoteUrl,
+          repoName: selectedRepo,
+          token: token || null,
+        });
+
+        setStatusText('拉取完成，正在加载…');
+        setTimeout(() => {
+          setLoading(false);
+          onRepoSelected(selectedRepo);
+        }, 600);
+        return;
+      }
+
+      // mode === 'new'
+      const finalName = customRepoName.trim() || 'my-git-note';
+      setStatusText(`正在初始化本地私有笔记仓库 ${finalName}…`);
+
+      // Initialize repo & seed default notebooks
+      await invoke('list_notebooks_tree', { repoName: finalName });
+
+      setTimeout(() => {
+        setLoading(false);
+        onRepoSelected(finalName);
+      }, 600);
+    } catch (err: any) {
       setLoading(false);
-      onRepoSelected(repoToUse);
-    }, 1000);
+      setErrorMessage(err.message || String(err));
+    }
   };
 
   return (
@@ -74,176 +116,194 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between pb-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <Avatar size={42} />
             <div>
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                连接笔记仓库
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-normal">
+              <h2 className="text-base font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                连接与拉取笔记仓库
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-normal">
                   {provider} · {username}
                 </span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                笔记内容将完全保存在您的私有仓库中，本地与云端双向同步
+                支持真实 Git 远程克隆与拉取，本地与云端私有仓库保持双向同步
               </p>
             </div>
           </div>
           <button
             onClick={onBack}
-            className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
+            className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
           >
-            切换账号
+            ← 重新认证
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-4 border-b border-slate-100 dark:border-slate-800 my-4 text-xs">
+        {/* 3 Modes Switch */}
+        <div className="grid grid-cols-3 gap-2 my-4 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs">
           <button
-            onClick={() => setActiveTab('notes')}
-            className={`pb-2.5 font-medium border-b-2 transition-all ${
-              activeTab === 'notes'
-                ? 'border-emerald-600 text-emerald-600'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+            onClick={() => setMode('url')}
+            className={`py-2 rounded-lg font-medium transition-all cursor-pointer ${
+              mode === 'url'
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                : 'text-slate-500'
             }`}
-            style={{
-              borderColor: activeTab === 'notes' ? 'var(--accent-600)' : 'transparent',
-              color: activeTab === 'notes' ? 'var(--accent-600)' : undefined,
-            }}
           >
-            1. 笔记私有仓库（必选）
+            🔗 输入任意 Git 远程地址
           </button>
+
           <button
-            onClick={() => setActiveTab('pages')}
-            className={`pb-2.5 font-medium border-b-2 transition-all ${
-              activeTab === 'pages'
-                ? 'border-emerald-600 text-emerald-600'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+            onClick={() => setMode('cloud')}
+            className={`py-2 rounded-lg font-medium transition-all cursor-pointer ${
+              mode === 'cloud'
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                : 'text-slate-500'
             }`}
           >
-            2. 公开站点仓库（可选）
+            ☁️ 从我的 {provider} 仓库选择 ({initialRepos.length})
+          </button>
+
+          <button
+            onClick={() => setMode('new')}
+            className={`py-2 rounded-lg font-medium transition-all cursor-pointer ${
+              mode === 'new'
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                : 'text-slate-500'
+            }`}
+          >
+            ＋ 新建私有仓库
           </button>
         </div>
 
-        {/* Tab 1: Notes repository */}
-        {activeTab === 'notes' && (
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {/* New repo option */}
-            <div
-              onClick={() => setIsCreatingNew(true)}
-              className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                isCreatingNew
-                  ? 'border-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-950 bg-emerald-50/30 dark:bg-emerald-950/20'
-                  : 'border-slate-200 hover:border-slate-300'
-              }`}
-              style={{
-                borderColor: isCreatingNew ? 'var(--accent-500)' : undefined,
-              }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-sm flex items-center gap-1.5">
-                  <span className="text-emerald-600 font-bold">+</span> 新建私有仓库
-                </span>
-                <span className="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 font-mono">
-                  🔒 Private
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mb-3">
-                自动为您在 {provider} 创建私有仓库，并初始化推荐的笔记目录骨架
+        {/* Mode 1: Clone by URL */}
+        {mode === 'url' && (
+          <div className="flex-1 space-y-4 py-2">
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+                Git 远程仓库地址 (HTTPS / SSH)
+              </label>
+              <input
+                type="text"
+                value={cloneUrl}
+                onChange={(e) => {
+                  setCloneUrl(e.target.value);
+                  setErrorMessage('');
+                }}
+                placeholder="例如：https://github.com/your-username/my-git-note.git"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-mono bg-white dark:bg-slate-800 focus:outline-none focus:border-emerald-500"
+                autoFocus
+              />
+              <p className="text-[11px] text-slate-400 mt-2">
+                系统将使用内置的 libgit2 及系统 Git 工具执行真实的 `git clone`，拉取全部已有笔记与分支。
               </p>
-              {isCreatingNew && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 font-mono">{username} /</span>
-                  <input
-                    type="text"
-                    value={newRepoName}
-                    onChange={(e) => setNewRepoName(e.target.value)}
-                    placeholder="仓库名，如 my-git-note"
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-mono focus:outline-none focus:border-emerald-500 w-64"
-                  />
-                </div>
-              )}
             </div>
 
-            <div className="text-xs font-medium text-slate-400 pt-2">或选择已有私有仓库：</div>
-
-            {mockRepos.map((repo) => {
-              const isSelected = !isCreatingNew && selectedRepo === repo.name;
-              return (
-                <div
-                  key={repo.name}
-                  onClick={() => {
-                    if (repo.isPrivate) {
-                      setIsCreatingNew(false);
-                      setSelectedRepo(repo.name);
-                    }
-                  }}
-                  className={`p-3.5 rounded-xl border transition-all ${
-                    !repo.isPrivate
-                      ? 'opacity-50 cursor-not-allowed border-slate-100 bg-slate-50/50'
-                      : isSelected
-                      ? 'border-emerald-500 ring-2 ring-emerald-100 cursor-pointer'
-                      : 'border-slate-200 hover:border-slate-300 cursor-pointer'
-                  }`}
-                  style={{
-                    borderColor: isSelected ? 'var(--accent-500)' : undefined,
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-sm text-slate-800 dark:text-slate-100">
-                      {repo.name}
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                      <span>{repo.updatedAt}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
-                        {repo.isPrivate ? '🔒 私有' : '🌐 公开 (不可用)'}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">{repo.description}</p>
-                </div>
-              );
-            })}
+            {token && (
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 px-2">
+                <span>🔒</span> 已挂载您的认证 Token，私有仓库无需再次输入密码
+              </div>
+            )}
           </div>
         )}
 
-        {/* Tab 2: Pages repository */}
-        {activeTab === 'pages' && (
-          <div className="flex-1 flex flex-col justify-center items-center text-center p-8 text-slate-500 text-xs">
-            <div className="text-3xl mb-2">🌐</div>
-            <div className="font-semibold text-sm text-slate-800 dark:text-slate-200 mb-1">
-              公开站点发布仓库
+        {/* Mode 2: Cloud Repos */}
+        {mode === 'cloud' && (
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[260px]">
+            {initialRepos.length > 0 ? (
+              initialRepos.map((repo) => {
+                const isSelected = selectedRepo === repo.name;
+                return (
+                  <div
+                    key={repo.name}
+                    onClick={() => setSelectedRepo(repo.name)}
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-950 bg-emerald-50/40'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-100">
+                        {repo.name}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono">
+                          {repo.private ? '🔒 私有仓库' : '🌐 公开仓库'}
+                        </span>
+                        {repo.updated_at && (
+                          <span>{new Date(repo.updated_at).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    </div>
+                    {repo.description && (
+                      <p className="text-[11px] text-slate-500 mt-1 truncate">{repo.description}</p>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-10 text-xs text-slate-400">
+                未检测到云端仓库，您可以选择第一项「输入任意 Git 远程地址」进行克隆，或「新建私有仓库」。
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mode 3: New local/private repo */}
+        {mode === 'new' && (
+          <div className="flex-1 space-y-4 py-2">
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+                新仓库名称
+              </label>
+              <input
+                type="text"
+                value={customRepoName}
+                onChange={(e) => {
+                  setCustomRepoName(e.target.value);
+                  setErrorMessage('');
+                }}
+                placeholder="my-git-note"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-mono bg-white dark:bg-slate-800 focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-[11px] text-slate-400 mt-2">
+                将在本地创建干净的 Git 仓库并自动初始化推荐的 `notebooks/` 目录结构与 `.mgnote/` 配置。
+              </p>
             </div>
-            <p className="max-w-md text-slate-400 mb-4 leading-relaxed">
-              单篇公开的笔记将发布到单独的公开仓库（如 {username}.github.io 或 my-git-note-pages），
-              与私有笔记物理隔离，避免私密笔记误公开。
-            </p>
-            <span className="px-3 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 text-[11px]">
-              可以现在跳过，第一次点击单篇笔记「公开发布」时再设置
-            </span>
+          </div>
+        )}
+
+        {/* Error message */}
+        {errorMessage && (
+          <div className="mt-3 p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+            ⚠ {errorMessage}
           </div>
         )}
 
         {/* Footer */}
-        <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-4">
-          <span className="text-xs text-slate-400">
-            存储路径：<code className="text-[11px]">~/Library/mg-node/repos/{isCreatingNew ? newRepoName : selectedRepo}</code>
-          </span>
+        <div className="pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-4">
+          <div className="text-xs text-slate-400">
+            {statusText ? (
+              <span className="text-emerald-600 font-medium animate-pulse">{statusText}</span>
+            ) : (
+              <span>本地克隆目录：<code className="text-[11px]">~/Library/mg-node/repos/</code></span>
+            )}
+          </div>
 
           <button
             onClick={handleStart}
             disabled={loading}
-            className="px-6 py-2.5 rounded-xl font-medium text-sm text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+            className="px-6 py-2.5 rounded-xl font-medium text-xs text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
             style={{
               background: 'var(--accent-600, #059669)',
             }}
           >
             {loading ? (
               <>
-                <span className="animate-spin">◌</span> 初始化仓库并建立索引…
+                <span className="animate-spin">◌</span> 处理中…
               </>
             ) : (
-              '拉取并开始使用 ➔'
+              mode === 'url' ? '克隆远程仓库 ➔' : '进入笔记工作台 ➔'
             )}
           </button>
         </div>

@@ -2,6 +2,7 @@
 @import './tokens.css';
 @import './components.css';
 @import './app.css';
+@import './workbench.css';
 
 *, *::before, *::after {
   box-sizing: border-box;
