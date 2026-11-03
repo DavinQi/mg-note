@@ -207,7 +207,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         {/* Source Textarea (Edit & Split) */}
         {(viewMode === 'edit' || viewMode === 'split') && (
           <div
-            className={`flex-1 h-full overflow-hidden flex flex-col ${
+            className={`flex-1 min-w-0 h-full overflow-hidden flex flex-col ${
               viewMode === 'split' ? 'border-r border-slate-200 dark:border-slate-800' : ''
             }`}
           >
@@ -230,7 +230,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         {(viewMode === 'preview' || viewMode === 'split') && (
           <div
             ref={previewRef}
-            className="flex-1 h-full overflow-y-auto p-8 prose dark:prose-invert max-w-none preview-body"
+            className="flex-1 min-w-0 h-full overflow-y-auto p-8 prose dark:prose-invert max-w-none preview-body"
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
             onDoubleClick={() => {
               if (viewMode === 'preview') {

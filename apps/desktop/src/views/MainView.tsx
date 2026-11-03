@@ -343,7 +343,7 @@ export const MainView: React.FC<MainViewProps> = ({
         </section>
 
         {/* Column 3: Main Editor or Document Viewer */}
-        <main className="flex-1 h-full flex flex-col overflow-hidden">
+        <main className="flex-1 h-full flex flex-col overflow-hidden min-w-0">
           {selectedNote.kind === 'md' ? (
             <MarkdownEditor
               key={selectedNote.id}

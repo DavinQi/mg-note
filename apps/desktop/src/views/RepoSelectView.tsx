@@ -62,13 +62,15 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
   return (
     <div
       className="w-full h-full flex flex-col items-center justify-center p-6 select-none"
-      style={{ background: 'var(--c-bg, #f5f5f4)' }}
+      style={{ background: 'var(--c-bg, #f5f5f4)', overflow: 'auto' }}
     >
       <div
         className="w-full max-w-[840px] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col"
         style={{
           background: 'var(--c-surface, #ffffff)',
-          minHeight: '560px',
+          minHeight: '480px',
+          maxHeight: 'calc(100vh - 64px)',
+          overflowY: 'auto',
         }}
       >
         {/* Header */}

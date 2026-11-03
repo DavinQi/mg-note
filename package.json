@@ -8,7 +8,9 @@
     "build": "pnpm --filter desktop build",
     "tauri": "pnpm --filter desktop tauri",
     "tauri:dev": "pnpm --filter desktop tauri dev",
-    "tauri:build": "pnpm --filter desktop tauri build"
+    "tauri:build": "pnpm --filter desktop tauri build --debug --no-sign",
+    "dmg:build": "mkdir -p apps/desktop/src-tauri/target/debug/bundle/dmg && hdiutil create -volname 'mg-node' -srcfolder apps/desktop/src-tauri/target/debug/bundle/macos/mg-node.app -ov -format UDZO apps/desktop/src-tauri/target/debug/bundle/dmg/mg-node_0.1.0_aarch64.dmg",
+    "package": "pnpm tauri:build && pnpm dmg:build"
   },
   "packageManager": "pnpm@10.14.0"
 }
