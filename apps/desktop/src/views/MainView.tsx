@@ -449,16 +449,16 @@ export const MainView: React.FC<MainViewProps> = ({
       if (notes.some((note) => note.path === relPath)) {
         throw new Error('同名文件已存在，请换一个标题。');
       }
+      const initialDocHtml = body || `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>${escapeHtml(title)}</h1><p>在此开始记录你的思考，支持类似 Word 的排版与直接粘贴外部富文本原格式...</p></body></html>`;
       if (kind === 'docx') {
-        const html = `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>${escapeHtml(title)}</h1><p><br></p></body></html>`;
-        await invoke('save_docx_html', { repoName, relPath, html });
+        await invoke('save_docx_html', { repoName, relPath, html: initialDocHtml });
       } else {
-        await invoke('save_note_content', { repoName, relPath, content: body });
+        await invoke('save_note_content', { repoName, relPath, content: kind === 'html' ? initialDocHtml : body });
       }
       setActiveCategory(folder);
       await refreshNotesFromDisk();
       setSelectedNoteId(relPath);
-      setActiveContent(kind === 'docx' ? '' : body);
+      setActiveContent(kind === 'docx' || kind === 'html' ? initialDocHtml : body);
       setShowNewNote(false);
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : String(error));
@@ -877,16 +877,17 @@ export const MainView: React.FC<MainViewProps> = ({
         {/* Column 3: Main Editor or Document Viewer */}
         <main className="wb-main-canvas">
           {selectedNote ? (
-            selectedNote.kind === 'docx' ? (
+            ['docx', 'html'].includes(selectedNote.kind) ? (
               <DocxEditor
                 key={selectedNote.id}
                 initialHtml={activeContent}
                 title={selectedNote.title}
+                kind={selectedNote.kind}
                 loadError={documentLoadError}
                 onSave={handleSaveNote}
                 onContentChange={setActiveContent}
               />
-            ) : ['md', 'html', 'txt'].includes(selectedNote.kind) ? (
+            ) : ['md', 'txt'].includes(selectedNote.kind) ? (
               <MarkdownEditor
                 key={selectedNote.id}
                 initialContent={activeContent}
