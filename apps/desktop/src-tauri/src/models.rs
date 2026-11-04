@@ -65,8 +65,67 @@ pub struct NoteFileItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
-    pub state: String, // "synced", "syncing", "conflict", "offline"
+    pub state: String, // "synced", "pending", "conflict", "no_remote"
     pub last_sync_time: Option<String>,
     pub pending_commits: u32,
     pub conflict_files: Vec<String>,
+    #[serde(default)]
+    pub has_origin: bool,
+    #[serde(default)]
+    pub remote_url: Option<String>,
+    #[serde(default = "default_sync_branch")]
+    pub branch: String,
+}
+
+fn default_sync_branch() -> String {
+    "my-git-note".into()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncFileChange {
+    pub path: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncPreview {
+    pub local_changes: Vec<SyncFileChange>,
+    pub remote_changes: Vec<SyncFileChange>,
+    pub possible_conflicts: Vec<String>,
+    pub has_origin: bool,
+    pub has_remote_branch: bool,
+    #[serde(default)]
+    pub remote_url: Option<String>,
+    #[serde(default = "default_sync_branch")]
+    pub branch: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedCredential {
+    pub provider: String,
+    pub username: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitBranchItem {
+    pub name: String,
+    pub is_current: bool,
+    pub is_remote: bool,
+    pub is_protected: bool,
+    pub commit_id: Option<String>,
+    pub commit_message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitEnvironmentStatus {
+    pub is_installed: bool,
+    pub version: Option<String>,
+    pub binary_path: Option<String>,
+    pub can_auto_install: bool,
+    pub error_message: Option<String>,
 }

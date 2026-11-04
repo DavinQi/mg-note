@@ -52,11 +52,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     root.setAttribute('data-appearance', s.appearance);
     root.setAttribute('data-hand', s.handFont ? '1' : '0');
 
-    // Dark mode
+    // Dark mode: sync both data-theme attribute and Tailwind .dark class
     if (s.darkMode) {
       root.setAttribute('data-theme', 'dark');
+      root.classList.add('dark');
     } else {
-      root.removeAttribute('data-theme');
+      root.setAttribute('data-theme', 'light');
+      root.classList.remove('dark');
     }
   };
 

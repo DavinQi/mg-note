@@ -1,5 +1,4 @@
 /* 组件：按钮 / 分段控件 / 卡片 / 工具栏 / 弹窗 / toast / 菜单 / 标签页 / 徽章 / 开关 */
-*{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--f-sans);font-size:var(--fs-md);color:var(--c-text);background:var(--c-bg)}
 code,pre,.mono{font-family:var(--f-mono)}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r-md);border:1px solid var(--c-line-strong);background:var(--c-surface);color:var(--c-text);font:inherit;font-size:var(--fs-sm);cursor:pointer;transition:background var(--dur)}

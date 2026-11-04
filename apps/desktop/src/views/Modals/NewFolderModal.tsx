@@ -2,20 +2,23 @@ import React, { useState } from 'react';
 
 interface NewFolderModalProps {
   categories: string[];
-  onConfirm: (parent: string, name: string) => void;
+  initialParent?: string;
+  onConfirm: (parent: string, name: string) => Promise<void>;
   onClose: () => void;
 }
 
 export const NewFolderModal: React.FC<NewFolderModalProps> = ({
   categories,
+  initialParent = '',
   onConfirm,
   onClose,
 }) => {
-  const [parent, setParent] = useState('');
+  const [parent, setParent] = useState(initialParent);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
@@ -26,7 +29,15 @@ export const NewFolderModal: React.FC<NewFolderModalProps> = ({
       setError('名称不能包含 / \\ : * ? " < > | 等非法字符');
       return;
     }
-    onConfirm(parent, trimmed);
+    setSaving(true);
+    setError('');
+    try {
+      await onConfirm(parent, trimmed);
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : String(createError));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -55,12 +66,12 @@ export const NewFolderModal: React.FC<NewFolderModalProps> = ({
               <option value="">（无 - 创建一级分类）</option>
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat}
+                  {cat.split('/').join(' / ')}
                 </option>
               ))}
             </select>
             <p className="text-[11px] text-slate-400 mt-1">
-              遵循规范：系统严格限制最多 2 级目录（一级分类 / 二级文件夹），更细颗粒度交由标签管理
+              支持一级分类和二级文件夹。
             </p>
           </div>
 
@@ -85,16 +96,18 @@ export const NewFolderModal: React.FC<NewFolderModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={saving}
               className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               取消
             </button>
             <button
               type="submit"
+              disabled={saving}
               className="px-4 py-2 rounded-lg text-white font-medium shadow-sm hover:shadow"
               style={{ background: 'var(--accent-600, #059669)' }}
             >
-              创建文件夹
+              {saving ? '创建中…' : '创建文件夹'}
             </button>
           </div>
         </form>

@@ -1,6 +1,6 @@
+use crate::models::{NoteFileItem, SavedCredential, Settings};
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::models::{NoteFileItem, Settings};
 
 pub fn get_app_dir() -> PathBuf {
     let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("./"));
@@ -38,6 +38,66 @@ pub fn save_settings(settings: &Settings) -> Result<(), String> {
     Ok(())
 }
 
+fn credential_index_path() -> PathBuf {
+    get_app_dir().join("saved-credentials.json")
+}
+
+pub fn load_saved_credentials() -> Result<Vec<SavedCredential>, String> {
+    let path = credential_index_path();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&content).map_err(|e| format!("读取已保存密钥列表失败：{}", e))
+}
+
+fn write_saved_credentials(credentials: &[SavedCredential]) -> Result<(), String> {
+    let path = credential_index_path();
+    let temp_path = path.with_extension("json.tmp");
+    let content = serde_json::to_vec_pretty(credentials).map_err(|e| e.to_string())?;
+    fs::write(&temp_path, content).map_err(|e| e.to_string())?;
+    fs::rename(&temp_path, &path).map_err(|e| e.to_string())
+}
+
+pub fn remember_saved_credential(provider: &str, username: &str) -> Result<(), String> {
+    let provider = provider.trim().to_ascii_lowercase();
+    let username = username.trim();
+    if !matches!(provider.as_str(), "github" | "gitee") || username.is_empty() {
+        return Err("密钥服务商或用户名无效".into());
+    }
+
+    let mut credentials = load_saved_credentials()?;
+    if !credentials
+        .iter()
+        .any(|item| item.provider == provider && item.username.eq_ignore_ascii_case(username))
+    {
+        credentials.push(SavedCredential {
+            provider,
+            username: username.to_string(),
+        });
+        credentials.sort_by(|a, b| {
+            a.provider
+                .cmp(&b.provider)
+                .then_with(|| a.username.to_lowercase().cmp(&b.username.to_lowercase()))
+        });
+        write_saved_credentials(&credentials)?;
+    }
+    Ok(())
+}
+
+pub fn forget_saved_credential(provider: &str, username: &str) -> Result<(), String> {
+    let mut credentials = load_saved_credentials()?;
+    let original_len = credentials.len();
+    credentials.retain(|item| {
+        !(item.provider.eq_ignore_ascii_case(provider.trim())
+            && item.username.eq_ignore_ascii_case(username.trim()))
+    });
+    if credentials.len() != original_len {
+        write_saved_credentials(&credentials)?;
+    }
+    Ok(())
+}
+
 pub fn scan_notebooks_tree(repo_path: &Path) -> Result<Vec<NoteFileItem>, String> {
     let notebooks_dir = repo_path.join("notebooks");
     if !notebooks_dir.exists() {
@@ -45,9 +105,11 @@ pub fn scan_notebooks_tree(repo_path: &Path) -> Result<Vec<NoteFileItem>, String
         let _ = fs::create_dir_all(notebooks_dir.join("后端开发"));
         let _ = fs::create_dir_all(notebooks_dir.join("前端工程"));
         let _ = fs::create_dir_all(notebooks_dir.join("收集笔记"));
-        
+
         // Seed an initial note if empty
-        let initial_note = notebooks_dir.join("后端开发").join("Redis-缓存穿透的三种解法.md");
+        let initial_note = notebooks_dir
+            .join("后端开发")
+            .join("Redis-缓存穿透的三种解法.md");
         if !initial_note.exists() {
             let sample = r#"---
 id: 01JBX7Q8K2M3N4P5R6S7T8V9W0
@@ -89,7 +151,11 @@ view_mode: split
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                let file_name = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
                 if file_name.starts_with('.') || file_name == "_folder.json" {
                     continue;
                 }
@@ -115,7 +181,11 @@ view_mode: split
                         tags: vec![],
                     });
                 } else {
-                    let ext = path.extension().unwrap_or_default().to_string_lossy().to_lowercase();
+                    let ext = path
+                        .extension()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_lowercase();
                     let kind = match ext.as_str() {
                         "md" => "md",
                         "html" | "htm" => "html",
@@ -134,7 +204,8 @@ view_mode: split
                             if let Ok(content) = fs::read_to_string(&path) {
                                 for line in content.lines().take(10) {
                                     if line.starts_with("title:") {
-                                        title = line.trim_start_matches("title:").trim().to_string();
+                                        title =
+                                            line.trim_start_matches("title:").trim().to_string();
                                     } else if line.starts_with("public: true") {
                                         public = true;
                                     }

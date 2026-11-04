@@ -1,9 +1,90 @@
-use std::fs;
-use tauri::AppHandle;
-use crate::models::{NoteFileItem, Settings, SyncStatus};
-use crate::storage::{get_repos_dir, load_settings, open_external, save_settings, scan_notebooks_tree};
+use crate::git_ops::{
+    check_git_environment as ops_check_git_environment, clone_or_open_remote_repo, commit_all,
+    get_sync_status, install_git_environment as ops_install_git_environment,
+    list_repository_branches as ops_list_repository_branches, open_or_init_repo, preview_sync,
+    remove_http_userinfo, set_remote_origin,
+    switch_repository_branch as ops_switch_repository_branch, sync_with_remote,
+};
 use crate::keychain::{delete_token, get_token, save_token};
-use crate::git_ops::{clone_or_open_remote_repo, commit_all, get_sync_status, open_or_init_repo, sync_with_remote};
+use crate::models::{
+    GitBranchItem, GitEnvironmentStatus, NoteFileItem, SavedCredential, Settings, SyncPreview,
+    SyncStatus,
+};
+use crate::storage::{
+    forget_saved_credential, get_repos_dir, load_saved_credentials, load_settings, open_external,
+    remember_saved_credential, save_settings, scan_notebooks_tree,
+};
+use std::fs;
+use std::path::{Component, Path, PathBuf};
+use std::process::Command;
+use tauri::AppHandle;
+
+fn validate_relative_path(value: &str, allow_empty: bool) -> Result<PathBuf, String> {
+    if value.is_empty() {
+        return if allow_empty {
+            Ok(PathBuf::new())
+        } else {
+            Err("路径不能为空".into())
+        };
+    }
+    if value.starts_with('/') || value.contains('\\') || value.contains('\0') {
+        return Err("路径格式无效".into());
+    }
+
+    let mut path = PathBuf::new();
+    for part in value.split('/') {
+        if part.is_empty() || part == "." || part == ".." {
+            return Err("路径不能包含空段或目录跳转".into());
+        }
+        path.push(part);
+    }
+    if path
+        .components()
+        .any(|part| !matches!(part, Component::Normal(_)))
+    {
+        return Err("路径格式无效".into());
+    }
+    Ok(path)
+}
+
+fn repository_path(repo_name: &str) -> Result<PathBuf, String> {
+    let repo = validate_relative_path(repo_name, false)?;
+    if repo.components().count() != 1 {
+        return Err("仓库名称无效".into());
+    }
+    Ok(get_repos_dir().join(repo))
+}
+
+fn notebook_root(repo_name: &str) -> Result<PathBuf, String> {
+    Ok(repository_path(repo_name)?.join("notebooks"))
+}
+
+fn notebook_paths(repo_name: &str, rel_path: &str) -> Result<(PathBuf, PathBuf), String> {
+    let rel = validate_relative_path(rel_path, false)?;
+    let root = notebook_root(repo_name)?;
+    Ok((root.clone(), root.join(rel)))
+}
+
+fn escape_html_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+fn max_child_folder_depth(folder: &Path) -> Result<usize, String> {
+    let entries = fs::read_dir(folder).map_err(|e| e.to_string())?;
+    let mut max_depth = 0;
+    for entry in entries {
+        let path = entry.map_err(|e| e.to_string())?.path();
+        if path.is_dir() {
+            max_depth = max_depth.max(1 + max_child_folder_depth(&path)?);
+        }
+    }
+    Ok(max_depth)
+}
 
 #[tauri::command]
 pub fn get_settings() -> Settings {
@@ -16,24 +97,48 @@ pub fn update_settings(settings: Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn store_keychain_token(provider: String, username: String, token: String) -> Result<(), String> {
-    save_token(&provider, &username, &token)
+pub fn store_keychain_token(
+    provider: String,
+    username: String,
+    token: String,
+) -> Result<(), String> {
+    remember_saved_credential(&provider, &username)?;
+    save_token(&provider.to_ascii_lowercase(), &username, &token)
 }
 
 #[tauri::command]
 pub fn read_keychain_token(provider: String, username: String) -> Result<Option<String>, String> {
-    get_token(&provider, &username)
+    get_token(&provider.to_ascii_lowercase(), &username)
 }
 
 #[tauri::command]
 pub fn remove_keychain_token(provider: String, username: String) -> Result<(), String> {
-    delete_token(&provider, &username)
+    delete_token(&provider.to_ascii_lowercase(), &username)?;
+    forget_saved_credential(&provider, &username)
 }
 
 #[tauri::command]
-pub fn clone_remote_repository(remote_url: String, repo_name: String, token: Option<String>) -> Result<(), String> {
-    let repo_path = get_repos_dir().join(&repo_name);
-    clone_or_open_remote_repo(&remote_url, &repo_path, token.as_deref())?;
+pub fn list_keychain_accounts() -> Result<Vec<SavedCredential>, String> {
+    load_saved_credentials()
+}
+
+#[tauri::command]
+pub fn remember_keychain_account(provider: String, username: String) -> Result<(), String> {
+    if get_token(&provider.to_ascii_lowercase(), &username)?.is_none() {
+        return Err("当前登录没有对应的已保存密钥".into());
+    }
+    remember_saved_credential(&provider, &username)
+}
+
+#[tauri::command]
+pub fn clone_remote_repository(
+    remote_url: String,
+    repo_name: String,
+    username: String,
+    token: Option<String>,
+) -> Result<(), String> {
+    let repo_path = repository_path(&repo_name)?;
+    clone_or_open_remote_repo(&remote_url, &repo_path, &username, token.as_deref(), None)?;
     Ok(())
 }
 
@@ -55,44 +160,85 @@ pub fn list_local_repos() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub fn list_notebooks_tree(repo_name: String) -> Result<Vec<NoteFileItem>, String> {
-    let repo_path = get_repos_dir().join(&repo_name);
+    let repo_path = repository_path(&repo_name)?;
     if !repo_path.exists() {
         let _ = fs::create_dir_all(&repo_path);
-        let _ = open_or_init_repo(&repo_path);
+        let _ = open_or_init_repo(&repo_path, None);
     }
     scan_notebooks_tree(&repo_path)
 }
 
 #[tauri::command]
 pub fn read_note_content(repo_name: String, rel_path: String) -> Result<String, String> {
-    let repo_path = get_repos_dir().join(&repo_name);
-    let file_path = repo_path.join("notebooks").join(&rel_path);
+    let (_, file_path) = notebook_paths(&repo_name, &rel_path)?;
     if !file_path.exists() {
         return Err("Note file not found".into());
     }
     fs::read_to_string(&file_path).map_err(|e| e.to_string())
 }
 
+fn ensure_folder_metadata(dir: &Path, root: &Path) {
+    if dir == root || !dir.starts_with(root) {
+        return;
+    }
+    let meta_file = dir.join("_folder.json");
+    if !meta_file.exists() {
+        if let Some(folder_name) = dir.file_name().and_then(|n| n.to_str()) {
+            let meta = serde_json::json!({
+                "name": folder_name,
+                "created": chrono::Local::now().to_rfc3339(),
+                "order": []
+            });
+            let _ = fs::write(meta_file, meta.to_string());
+        }
+    }
+    if let Some(parent) = dir.parent() {
+        ensure_folder_metadata(parent, root);
+    }
+}
+
 #[tauri::command]
-pub fn save_note_content(repo_name: String, rel_path: String, content: String) -> Result<(), String> {
-    let repo_path = get_repos_dir().join(&repo_name);
-    let file_path = repo_path.join("notebooks").join(&rel_path);
+pub fn save_note_content(
+    repo_name: String,
+    rel_path: String,
+    content: String,
+) -> Result<(), String> {
+    let (root, file_path) = notebook_paths(&repo_name, &rel_path)?;
     if let Some(parent) = file_path.parent() {
         let _ = fs::create_dir_all(parent);
+        ensure_folder_metadata(parent, &root);
     }
     fs::write(&file_path, content).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn create_new_folder(repo_name: String, parent_folder: Option<String>, folder_name: String) -> Result<(), String> {
-    let repo_path = get_repos_dir().join(&repo_name);
-    let base_dir = repo_path.join("notebooks");
-    let target_dir = match parent_folder {
-        Some(ref p) if !p.is_empty() => base_dir.join(p).join(&folder_name),
-        _ => base_dir.join(&folder_name),
-    };
-    fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-    
+pub fn create_new_folder(
+    repo_name: String,
+    parent_folder: Option<String>,
+    folder_name: String,
+) -> Result<(), String> {
+    let base_dir = notebook_root(&repo_name)?;
+    let folder_name_path = validate_relative_path(&folder_name, false)?;
+    if folder_name_path.components().count() != 1 {
+        return Err("文件夹名称无效".into());
+    }
+    let parent_path = validate_relative_path(parent_folder.as_deref().unwrap_or(""), true)?;
+    if parent_path.components().count() > 1 {
+        return Err("目前最多支持两级文件夹".into());
+    }
+    let parent_dir = base_dir.join(parent_path);
+    if !parent_dir.is_dir() {
+        return Err("上级文件夹不存在".into());
+    }
+    let target_dir = parent_dir.join(&folder_name_path);
+    fs::create_dir(&target_dir).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::AlreadyExists {
+            "同名文件夹已存在".to_string()
+        } else {
+            e.to_string()
+        }
+    })?;
+
     // Create _folder.json to keep git tracking and store metadata
     let meta_file = target_dir.join("_folder.json");
     if !meta_file.exists() {
@@ -107,27 +253,273 @@ pub fn create_new_folder(repo_name: String, parent_folder: Option<String>, folde
 }
 
 #[tauri::command]
+pub fn move_notebook_item(
+    repo_name: String,
+    source_path: String,
+    destination_folder: String,
+) -> Result<String, String> {
+    let (base_dir, source_rel) = notebook_paths(&repo_name, &source_path)?;
+    let destination_rel = validate_relative_path(&destination_folder, true)?;
+    let destination_dir = base_dir.join(&destination_rel);
+    if !destination_dir.is_dir() {
+        return Err("目标文件夹不存在".into());
+    }
+
+    let source = base_dir.join(&source_rel);
+    if !source.exists() {
+        return Err("要移动的文件或文件夹不存在".into());
+    }
+    if destination_rel.components().count() > 2 {
+        return Err("目前最多支持两级文件夹".into());
+    }
+
+    let name = source.file_name().ok_or_else(|| "源路径无效".to_string())?;
+    let destination = destination_dir.join(name);
+    if destination == source {
+        return Ok(source_rel.to_string_lossy().into_owned());
+    }
+    if source.is_dir() && destination.starts_with(&source) {
+        return Err("不能把文件夹移动到它自身或其子文件夹中".into());
+    }
+    if destination.exists() {
+        return Err("目标位置已存在同名文件或文件夹".into());
+    }
+
+    if source.is_dir() {
+        let new_depth = destination_rel.components().count() + 1 + max_child_folder_depth(&source)?;
+        if new_depth > 2 {
+            return Err("移动后会超过两级文件夹限制".into());
+        }
+    }
+
+    fs::rename(&source, &destination).map_err(|e| e.to_string())?;
+    Ok(destination
+        .strip_prefix(&base_dir)
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .replace('\\', "/"))
+}
+
+#[tauri::command]
+pub fn read_docx_html(repo_name: String, rel_path: String) -> Result<String, String> {
+    let (_, file_path) = notebook_paths(&repo_name, &rel_path)?;
+    if file_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_lowercase())
+        != Some("docx".into())
+    {
+        return Err("文件不是 DOCX 文档".into());
+    }
+    if !file_path.is_file() {
+        return Err("DOCX 文档不存在".into());
+    }
+
+    let output = Command::new("/usr/bin/textutil")
+        .args(["-convert", "html", "-stdout"])
+        .arg(&file_path)
+        .output()
+        .map_err(|e| format!("无法启动 macOS 文档转换工具：{e}"))?;
+    if !output.status.success() {
+        let conversion_error = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let raw_content = fs::read(&file_path).map_err(|e| e.to_string())?;
+        if let Ok(text_content) = String::from_utf8(raw_content) {
+            let contains_binary_control = text_content.chars().any(|character| {
+                character == '\0'
+                    || (character.is_control() && !matches!(character, '\n' | '\r' | '\t'))
+            });
+            if !contains_binary_control {
+                return Ok(format!(
+                    "<!doctype html><html><body><pre>{}</pre></body></html>",
+                    escape_html_text(&text_content)
+                ));
+            }
+        }
+        return Err(conversion_error);
+    }
+    String::from_utf8(output.stdout).map_err(|e| format!("DOCX 转换结果编码无效：{e}"))
+}
+
+#[tauri::command]
+pub fn save_docx_html(repo_name: String, rel_path: String, html: String) -> Result<(), String> {
+    let (root, file_path) = notebook_paths(&repo_name, &rel_path)?;
+    if file_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_lowercase())
+        != Some("docx".into())
+    {
+        return Err("文件不是 DOCX 文档".into());
+    }
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        ensure_folder_metadata(parent, &root);
+    }
+
+    let temp_dir = std::env::temp_dir().join(format!("mg-node-docx-{}", ulid::Ulid::new()));
+    fs::create_dir(&temp_dir).map_err(|e| e.to_string())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Err(error) = fs::set_permissions(&temp_dir, fs::Permissions::from_mode(0o700)) {
+            let _ = fs::remove_dir_all(&temp_dir);
+            return Err(error.to_string());
+        }
+    }
+    let input_path = temp_dir.join("document.html");
+    let output_path = temp_dir.join("document.docx");
+    let conversion_result = (|| {
+        fs::write(&input_path, html.as_bytes()).map_err(|e| e.to_string())?;
+        let output = Command::new("/usr/bin/textutil")
+            .args(["-convert", "docx", "-output"])
+            .arg(&output_path)
+            .arg(&input_path)
+            .output()
+            .map_err(|e| format!("无法启动 macOS 文档转换工具：{e}"))?;
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+        }
+        fs::read(&output_path).map_err(|e| e.to_string())
+    })();
+    let _ = fs::remove_dir_all(&temp_dir);
+    let bytes = conversion_result?;
+
+    let temp_file = file_path.with_file_name(format!(".mg-node-{}.docx.tmp", ulid::Ulid::new()));
+    fs::write(&temp_file, bytes).map_err(|e| e.to_string())?;
+    if let Err(error) = fs::rename(&temp_file, &file_path) {
+        let _ = fs::remove_file(&temp_file);
+        return Err(error.to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn open_note_in_external(repo_name: String, rel_path: String) -> Result<(), String> {
-    let repo_path = get_repos_dir().join(&repo_name);
-    let file_path = repo_path.join("notebooks").join(&rel_path);
+    let (_, file_path) = notebook_paths(&repo_name, &rel_path)?;
     open_external(&file_path)
 }
 
 #[tauri::command]
-pub fn perform_git_sync(repo_name: String) -> Result<SyncStatus, String> {
-    let repo_path = get_repos_dir().join(&repo_name);
-    let repo = open_or_init_repo(&repo_path)?;
-    let msg = format!("mg-node: auto sync {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
-    let _ = commit_all(&repo, &msg);
-    let _ = sync_with_remote(&repo_path);
+pub fn perform_git_sync(
+    repo_name: String,
+    provider: String,
+    username: String,
+    target_branch: Option<String>,
+) -> Result<SyncStatus, String> {
+    let repo_path = repository_path(&repo_name)?;
+    let repo = open_or_init_repo(&repo_path, target_branch.as_deref())?;
+    let msg = format!(
+        "mg-node: auto sync {}",
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+    );
+    commit_all(&repo, &msg)?;
+    let token = get_token(&provider.to_lowercase(), &username)?;
+    if token.as_deref().map_or(true, |t| t.trim().is_empty()) {
+        if let Ok(origin) = repo.find_remote("origin") {
+            if let Some(url) = origin.url() {
+                if url.starts_with("http://") || url.starts_with("https://") {
+                    return Err(format!(
+                        "PERMISSION_ERROR: 未在钥匙串中找到 {} 用户 {} 的授权 Token。请先使用 Personal Access Token 登录或在设置中配置密钥。",
+                        provider, username
+                    ));
+                }
+            }
+        }
+    }
+    sync_with_remote(&repo_path, token.as_deref(), &username, target_branch.as_deref())?;
     get_sync_status(&repo)
 }
 
 #[tauri::command]
+pub fn preview_git_sync(
+    repo_name: String,
+    provider: String,
+    username: String,
+    target_branch: Option<String>,
+) -> Result<SyncPreview, String> {
+    let repo_path = repository_path(&repo_name)?;
+    let repo = open_or_init_repo(&repo_path, target_branch.as_deref())?;
+    let token = get_token(&provider.to_lowercase(), &username)?;
+    if token.as_deref().map_or(true, |t| t.trim().is_empty()) {
+        if let Ok(origin) = repo.find_remote("origin") {
+            if let Some(url) = origin.url() {
+                if url.starts_with("http://") || url.starts_with("https://") {
+                    return Err(format!(
+                        "PERMISSION_ERROR: 未在钥匙串中找到 {} 用户 {} 的授权 Token。请先使用 Personal Access Token 登录或在设置中配置密钥。",
+                        provider, username
+                    ));
+                }
+            }
+        }
+    }
+    preview_sync(&repo_path, token.as_deref(), &username, target_branch.as_deref())
+}
+
+#[tauri::command]
+pub fn check_git_environment() -> GitEnvironmentStatus {
+    ops_check_git_environment()
+}
+
+#[tauri::command]
+pub fn install_git_environment() -> Result<String, String> {
+    ops_install_git_environment()
+}
+
+#[tauri::command]
+pub fn list_repository_branches(repo_name: String) -> Result<Vec<GitBranchItem>, String> {
+    let repo_path = repository_path(&repo_name)?;
+    let _repo = open_or_init_repo(&repo_path, None)?;
+    ops_list_repository_branches(&repo_path)
+}
+
+#[tauri::command]
+pub fn switch_repository_branch(
+    repo_name: String,
+    branch_name: String,
+    create_if_missing: Option<bool>,
+) -> Result<String, String> {
+    let repo_path = repository_path(&repo_name)?;
+    let _repo = open_or_init_repo(&repo_path, None)?;
+    ops_switch_repository_branch(&repo_path, &branch_name, create_if_missing.unwrap_or(false))
+}
+
+#[tauri::command]
 pub fn get_repo_sync_status(repo_name: String) -> Result<SyncStatus, String> {
-    let repo_path = get_repos_dir().join(&repo_name);
-    let repo = open_or_init_repo(&repo_path)?;
+    let repo_path = repository_path(&repo_name)?;
+    let repo = open_or_init_repo(&repo_path, None)?;
     get_sync_status(&repo)
+}
+
+#[tauri::command]
+pub fn set_repository_remote(repo_name: String, remote_url: String) -> Result<(), String> {
+    let repo_path = repository_path(&repo_name)?;
+    let repo = open_or_init_repo(&repo_path, None)?;
+    set_remote_origin(&repo, &remote_url)
+}
+
+#[tauri::command]
+pub fn get_repository_remote(repo_name: String) -> Result<Option<String>, String> {
+    let repo_path = repository_path(&repo_name)?;
+    let repo = open_or_init_repo(&repo_path, None)?;
+    let url = match repo.find_remote("origin") {
+        Ok(remote) => remote.url().map(|u| remove_http_userinfo(u)),
+        Err(_) => None,
+    };
+    Ok(url)
+}
+
+#[tauri::command]
+pub fn import_file_bytes(
+    repo_name: String,
+    rel_path: String,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
+    let (root, file_path) = notebook_paths(&repo_name, &rel_path)?;
+    if let Some(parent) = file_path.parent() {
+        let _ = fs::create_dir_all(parent);
+        ensure_folder_metadata(parent, &root);
+    }
+    fs::write(&file_path, bytes).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

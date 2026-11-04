@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-  mg_node_lib::run();
+    mg_node_lib::run();
 }

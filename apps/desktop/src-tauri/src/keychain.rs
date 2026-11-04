@@ -28,3 +28,19 @@ pub fn delete_token(provider: &str, username: &str) -> Result<(), String> {
         Err(e) => Err(e.to_string()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_keychain_save_and_get() {
+        save_token("test-provider", "test-user", "test-secret-123").unwrap();
+        let read = get_token("test-provider", "test-user").unwrap();
+        assert_eq!(read, Some("test-secret-123".to_string()));
+        delete_token("test-provider", "test-user").unwrap();
+        let after_delete = get_token("test-provider", "test-user").unwrap();
+        assert_eq!(after_delete, None);
+    }
+}
+

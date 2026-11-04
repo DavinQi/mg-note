@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { useSettings } from '../context/SettingsContext';
 import { Avatar } from '../components/Avatar';
 import { CustomizePanel } from '../components/CustomizePanel';
+import { AppLogo } from '../components/AppLogo';
 
 interface LoginViewProps {
   onLoginSuccess: (provider: string, user: string, token?: string, repos?: any[]) => void;
 }
+
+interface SavedCredential {
+  provider: 'github' | 'gitee';
+  username: string;
+}
+
+const credentialKey = (credential: SavedCredential) =>
+  `${credential.provider}:${credential.username}`;
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const { settings, updateSettings, getArts } = useSettings();
@@ -15,6 +25,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showCustomize, setShowCustomize] = useState(false);
+  const [savedCredentials, setSavedCredentials] = useState<SavedCredential[]>([]);
+  const [selectedCredentialKey, setSelectedCredentialKey] = useState('');
+  const [credentialLoadError, setCredentialLoadError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const loadSavedCredentials = async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const credentials: SavedCredential[] = await invoke('list_keychain_accounts');
+        if (active) {
+          setSavedCredentials(credentials);
+          setSelectedCredentialKey(credentials[0] ? credentialKey(credentials[0]) : '');
+        }
+      } catch (error) {
+        if (active) {
+          setCredentialLoadError(
+            error instanceof Error ? error.message : '读取已保存密钥列表失败。'
+          );
+        }
+      }
+    };
+    void loadSavedCredentials();
+    return () => { active = false; };
+  }, []);
 
   const arts = getArts();
   const currentArtIndex = Math.max(
@@ -22,6 +57,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     arts.findIndex((a) => a.id === settings.loginArt)
   );
   const currentArt = arts[currentArtIndex] || arts[0];
+  const tokenPageUrl =
+    provider === 'GitHub'
+      ? 'https://github.com/settings/tokens/new?scopes=repo&description=mg-node'
+      : 'https://gitee.com/profile/personal_access_tokens';
 
   // Auto carousel effect
   useEffect(() => {
@@ -55,108 +94,183 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     updateSettings({ loginArt: arts[nextIndex].id });
   };
 
-  const handleLogin = async () => {
+  const handleOpenTokenPage = async () => {
+    setErrorMessage('');
+    try {
+      await openUrl(tokenPageUrl);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '无法打开 Token 页面，请检查默认浏览器设置。');
+    }
+  };
+
+  const authenticateWithToken = async (
+    targetProvider: 'GitHub' | 'Gitee',
+    token: string,
+    saveCredential: boolean
+  ) => {
     if (loading) return;
     setErrorMessage('');
     setLoading(true);
 
-    const token = tokenInput.trim();
-
-    // 1. 如果用户输入了真实 Token，调用官方 API 进行真实鉴权与仓库拉取
-    if (token) {
-      try {
-        if (provider === 'GitHub') {
-          // 调用 GitHub API 获取用户信息
-          const userRes = await fetch('https://api.github.com/user', {
-            headers: {
-              Authorization: `token ${token}`,
-              Accept: 'application/vnd.github.v3+json',
-            },
-          });
-
-          if (!userRes.ok) {
-            throw new Error(`GitHub Token 校验失败 (${userRes.status})，请检查 Token 权限 (需勾选 repo 范围)`);
-          }
-
-          const userData = await userRes.json();
-          const username = userData.login;
-          const nickname = userData.name || userData.login;
-
-          // 调用 GitHub API 获取真实的仓库列表
-          const reposRes = await fetch(
-            'https://api.github.com/user/repos?affiliation=owner&sort=updated&per_page=100',
-            {
-              headers: {
-                Authorization: `token ${token}`,
-                Accept: 'application/vnd.github.v3+json',
-              },
-            }
-          );
-
-          let realRepos: any[] = [];
-          if (reposRes.ok) {
-            realRepos = await reposRes.json();
-          }
-
-          // 将 Token 安全保存至 macOS Keychain
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('store_keychain_token', {
-              provider: 'github',
-              username,
-              token,
-            });
-          } catch (_) {}
-
-          updateSettings({ nickname });
-          setLoading(false);
-          onLoginSuccess(provider, username, token, realRepos);
-          return;
-        } else {
-          // Gitee Token 验证
-          const userRes = await fetch(`https://gitee.com/api/v5/user?access_token=${token}`);
-          if (!userRes.ok) {
-            throw new Error(`Gitee Token 校验失败 (${userRes.status})`);
-          }
-          const userData = await userRes.json();
-          const username = userData.login;
-          const nickname = userData.name || userData.login;
-
-          const reposRes = await fetch(
-            `https://gitee.com/api/v5/user/repos?access_token=${token}&sort=updated&per_page=100`
-          );
-          let realRepos: any[] = [];
-          if (reposRes.ok) {
-            realRepos = await reposRes.json();
-          }
-
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('store_keychain_token', {
-              provider: 'gitee',
-              username,
-              token,
-            });
-          } catch (_) {}
-
-          updateSettings({ nickname });
-          setLoading(false);
-          onLoginSuccess(provider, username, token, realRepos);
-          return;
+    try {
+      let userData: any;
+      let realRepos: any[] = [];
+      if (targetProvider === 'GitHub') {
+        const userRes = await fetch('https://api.github.com/user', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+          },
+        });
+        if (!userRes.ok) {
+          throw new Error(`GitHub Token 校验失败 (${userRes.status})，请检查 Token 是否有效或已过期。`);
         }
-      } catch (err: any) {
-        setLoading(false);
-        setErrorMessage(err.message || '连接失败，请检查网络或 Token');
-        return;
+
+        // Scope validation: Classic GitHub Tokens return `x-oauth-scopes` header
+        const scopesHeader = userRes.headers.get('x-oauth-scopes');
+        if (scopesHeader !== null) {
+          const scopes = scopesHeader.split(',').map((s) => s.trim().toLowerCase());
+          const hasRepoScope = scopes.some((s) => s === 'repo' || s === 'public_repo');
+          if (!hasRepoScope) {
+            throw new Error(
+              `Token 权限不足：当前 Token 未勾选「repo」仓库读写权限 (当前权限: [${scopes.join(', ') || '无'}])。请在 GitHub 重新生成勾选了 repo 权限的 Personal Access Token，否则无法将笔记同步到 Git。`
+            );
+          }
+        }
+
+        userData = await userRes.json();
+        const reposRes = await fetch(
+          'https://api.github.com/user/repos?affiliation=owner&sort=updated&per_page=100',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github+json',
+            },
+          }
+        );
+        if (reposRes.ok) {
+          realRepos = await reposRes.json();
+        } else if (reposRes.status === 401 || reposRes.status === 403) {
+          throw new Error(`GitHub Token 缺少仓库读取与写入权限 (${reposRes.status})，请确认细粒度 Token (Fine-grained token) 是否已授权对应仓库的 Contents: Read and write 权限。`);
+        }
+      } else {
+        const userRes = await fetch(`https://gitee.com/api/v5/user?access_token=${encodeURIComponent(token)}`);
+        if (!userRes.ok) throw new Error(`Gitee Token 校验失败 (${userRes.status})，请检查 Token 是否有效。`);
+        userData = await userRes.json();
+        const reposRes = await fetch(
+          `https://gitee.com/api/v5/user/repos?access_token=${encodeURIComponent(token)}&sort=updated&per_page=100`
+        );
+        if (reposRes.ok) {
+          realRepos = await reposRes.json();
+        } else if (reposRes.status === 401 || reposRes.status === 403) {
+          throw new Error(`Gitee Token 权限不足 (${reposRes.status})，请确认已勾选 projects (用户仓库) 权限。`);
+        }
       }
+
+      const username = userData.login;
+      const nickname = userData.name || username;
+      const { invoke } = await import('@tauri-apps/api/core');
+      if (saveCredential) {
+        await invoke('store_keychain_token', {
+          provider: targetProvider.toLowerCase(),
+          username,
+          token,
+        });
+        // Update local savedCredentials list so user sees it right away
+        setSavedCredentials((prev) => {
+          const providerLower = targetProvider.toLowerCase() as 'github' | 'gitee';
+          const filtered = prev.filter(
+            (c) => !(c.provider === providerLower && c.username.toLowerCase() === username.toLowerCase())
+          );
+          return [{ provider: providerLower, username }, ...filtered];
+        });
+      }
+      setProvider(targetProvider);
+      updateSettings({ nickname });
+      onLoginSuccess(targetProvider, username, token, realRepos);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '连接失败，请检查网络或 Token');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    const token = tokenInput.trim();
+    if (token) {
+      await authenticateWithToken(provider, token, true);
+      return;
     }
 
-    // 2. 如果没有填 Token 或选择 Device Flow/本地模式，直接进入仓库选择配置
+    if (method === 'token') {
+      if (selectedCredential) {
+        await handleSavedCredentialLogin(selectedCredential);
+        return;
+      }
+      setErrorMessage('请输入 Personal Access Token，或在下方选择已保存的密钥登录。');
+      return;
+    }
+
+    // 免密 / 本地模式
+    if (loading) return;
+    setErrorMessage('');
+    setLoading(true);
     setTimeout(() => {
       setLoading(false);
       onLoginSuccess(provider, settings.nickname || 'Alex');
     }, 600);
   };
+
+  const handleSavedCredentialLogin = async (credential: SavedCredential) => {
+    if (loading) return;
+    setLoading(true);
+    setErrorMessage('');
+    const targetProvider = credential.provider === 'gitee' ? 'Gitee' : 'GitHub';
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const token: string | null = await invoke('read_keychain_token', {
+        provider: credential.provider,
+        username: credential.username,
+      });
+      if (!token) {
+        await invoke('remove_keychain_token', {
+          provider: credential.provider,
+          username: credential.username,
+        });
+        setSavedCredentials((current) => current.filter((item) => item !== credential));
+        throw new Error('这个密钥已从 macOS 钥匙串中移除，请重新添加。');
+      }
+      await authenticateWithToken(targetProvider, token, false);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '读取已保存密钥失败。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSavedCredential = async (credential: SavedCredential) => {
+    const providerName = credential.provider === 'gitee' ? 'Gitee' : 'GitHub';
+    if (!window.confirm(`从 macOS 钥匙串删除 ${providerName} · ${credential.username} 的密钥？`)) return;
+    setCredentialLoadError('');
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('remove_keychain_token', {
+        provider: credential.provider,
+        username: credential.username,
+      });
+      const next = savedCredentials.filter((item) => credentialKey(item) !== credentialKey(credential));
+      setSavedCredentials(next);
+      if (selectedCredentialKey === credentialKey(credential)) {
+        setSelectedCredentialKey(next[0] ? credentialKey(next[0]) : '');
+      }
+    } catch (error) {
+      setCredentialLoadError(error instanceof Error ? error.message : '删除密钥失败。');
+    }
+  };
+
+  const selectedCredential = savedCredentials.find(
+    (credential) => credentialKey(credential) === selectedCredentialKey
+  );
 
   return (
     <div
@@ -227,7 +341,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             }}
           />
 
-          {/* Logo Badge */}
+          {/* Grok-bot Style App Logo Badge */}
           <div
             style={{
               position: 'relative',
@@ -235,39 +349,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               padding: '24px',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
             }}
           >
             <div
-              className="hand sketch-border"
               style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: 'rgba(255, 255, 255, 0.9)',
-                display: 'grid',
-                placeItems: 'center',
-                fontWeight: 700,
-                fontSize: '18px',
-                color: 'var(--accent-700, #047857)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                background: 'rgba(255, 255, 255, 0.92)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '16px',
+                padding: '6px 14px 6px 8px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.6)',
               }}
             >
-              mg
-            </div>
-            <div
-              style={{
-                background: 'rgba(255, 255, 255, 0.88)',
-                backdropFilter: 'blur(6px)',
-                borderRadius: '8px',
-                padding: '4px 12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: '14px', color: '#1f2433', letterSpacing: '-0.01em' }}>
-                mg-node
-              </div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>my-git-note · 自有笔记工具</div>
+              <AppLogo size={38} showText={true} theme="emerald" />
             </div>
           </div>
 
@@ -672,13 +766,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     <span>🔒</span> 令牌将安全加密保存在 macOS 钥匙串中
                   </p>
                   <a
-                    href={
-                      provider === 'GitHub'
-                        ? 'https://github.com/settings/tokens/new?scopes=repo&description=mg-node'
-                        : 'https://gitee.com/profile/personal_access_tokens/new'
-                    }
-                    target="_blank"
-                    rel="noreferrer"
+                    href={tokenPageUrl}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void handleOpenTokenPage();
+                    }}
                     style={{ fontSize: '11px', color: 'var(--accent-600)', textDecoration: 'none' }}
                   >
                     获取 Token ↗
@@ -708,6 +800,94 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             )}
           </div>
 
+          {method === 'token' && (
+            <div
+              style={{
+                marginBottom: '14px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                border: '1px solid var(--c-line-strong)',
+                background: 'var(--c-surface-2)',
+              }}
+            >
+              <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '7px' }}>
+                已保存的登录密钥
+              </div>
+              {savedCredentials.length > 0 ? (
+                <>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      className="field"
+                      value={selectedCredentialKey}
+                      onChange={(event) => {
+                        const newKey = event.target.value;
+                        setSelectedCredentialKey(newKey);
+                        const match = savedCredentials.find((c) => credentialKey(c) === newKey);
+                        if (match) {
+                          setProvider(match.provider === 'gitee' ? 'Gitee' : 'GitHub');
+                        }
+                      }}
+                      aria-label="选择已保存的登录密钥"
+                      style={{ flex: 1, minWidth: 0, fontSize: '12px' }}
+                    >
+                      {savedCredentials.map((credential) => (
+                        <option key={credentialKey(credential)} value={credentialKey(credential)}>
+                          {credential.provider === 'gitee' ? 'Gitee' : 'GitHub'} · {credential.username}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedCredential && (
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteSavedCredential(selectedCredential)}
+                        disabled={loading}
+                        style={{
+                          padding: '0 10px',
+                          borderRadius: '8px',
+                          border: '1px solid #fecaca',
+                          color: '#dc2626',
+                          background: '#fff7f7',
+                          cursor: loading ? 'default' : 'pointer',
+                          fontSize: '11px',
+                        }}
+                      >
+                        删除
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => selectedCredential && void handleSavedCredentialLogin(selectedCredential)}
+                    disabled={loading || !selectedCredential}
+                    style={{
+                      width: '100%',
+                      marginTop: '7px',
+                      padding: '7px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--accent-200)',
+                      color: 'var(--accent-700)',
+                      background: 'var(--accent-50)',
+                      cursor: loading || !selectedCredential ? 'default' : 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {loading ? '正在验证密钥…' : '使用所选密钥登录'}
+                  </button>
+                </>
+              ) : (
+                <div style={{ color: 'var(--c-muted)', fontSize: '11px' }}>
+                  暂无已保存密钥；首次使用 Token 登录后会自动保存到 macOS 钥匙串。
+                </div>
+              )}
+              {credentialLoadError && (
+                <div style={{ marginTop: '6px', color: '#dc2626', fontSize: '11px' }}>
+                  {credentialLoadError}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Action button */}
           <button
             onClick={handleLogin}
@@ -734,6 +914,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               <>
                 <span className="inline-block animate-spin">◌</span> 正在验证 {provider} 并拉取真实仓库…
               </>
+            ) : tokenInput.trim() ? (
+              `连接 ${provider} 并继续 ➔`
+            ) : method === 'token' && selectedCredential ? (
+              `使用 ${selectedCredential.provider === 'gitee' ? 'Gitee' : 'GitHub'} · ${selectedCredential.username} 登录 ➔`
             ) : (
               `连接 ${provider} 并继续 ➔`
             )}
@@ -765,7 +949,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 background: 'var(--c-surface, #ffffff)',
                 zIndex: 50,
                 overflow: 'hidden',
-                maxHeight: 'calc(100% - 72px)',
+                height: 'min(580px, calc(100% - 72px))',
               }}
             >
               <CustomizePanel showArt={true} onClose={() => setShowCustomize(false)} />

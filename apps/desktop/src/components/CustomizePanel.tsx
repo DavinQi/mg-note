@@ -62,7 +62,7 @@ export const CustomizePanel: React.FC<CustomizePanelProps> = ({ showArt = true, 
 
   return (
     <div
-      className="customize-panel p-4 text-xs select-none overflow-y-auto max-h-[580px]"
+      className="customize-panel h-full min-h-0 p-4 text-xs select-none overflow-y-auto"
       style={{
         color: 'var(--c-text, #1f2433)',
         background: 'var(--c-surface, #ffffff)',

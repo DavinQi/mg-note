@@ -8,6 +8,7 @@ import { WpsToolbar } from './WpsToolbar';
 interface MarkdownEditorProps {
   initialContent: string;
   onSave: (content: string) => void;
+  onContentChange: (content: string) => void;
   title: string;
 }
 
@@ -29,6 +30,7 @@ mdParser.use(taskLists);
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   initialContent,
   onSave,
+  onContentChange,
   title,
 }) => {
   const [content, setContent] = useState(initialContent);
@@ -68,6 +70,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Debounced auto-save (800ms)
   const handleContentChange = (newVal: string) => {
     setContent(newVal);
+    onContentChange(newVal);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       onSave(newVal);

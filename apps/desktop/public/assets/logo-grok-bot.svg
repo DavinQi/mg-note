@@ -1,0 +1,49 @@
+<svg width="256" height="256" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grok-bot-bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="grok-bot-face" x1="64" y1="36" x2="64" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="120%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <!-- Container -->
+  <rect x="6" y="6" width="116" height="116" rx="28" fill="url(#grok-bot-bg)" stroke="#059669" stroke-width="2" />
+
+  <!-- Git Commit Antenna -->
+  <path d="M64 42V23" stroke="#a7f3d0" stroke-width="4" stroke-linecap="round" />
+  <path d="M64 29C52 29 48 22 48 18" stroke="#6ee7b7" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="48" cy="18" r="4.5" fill="#34d399" stroke="#ffffff" stroke-width="2" />
+  <path d="M64 25C76 25 80 18 80 15" stroke="#34d399" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="80" cy="15" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="2" />
+
+  <!-- Ear Sensors -->
+  <rect x="18" y="58" width="7" height="22" rx="3.5" fill="#cbd5e1" opacity="0.9" />
+  <rect x="103" y="58" width="7" height="22" rx="3.5" fill="#cbd5e1" opacity="0.9" />
+
+  <!-- Grok Bot Head -->
+  <rect x="23" y="38" width="82" height="64" rx="22" fill="url(#grok-bot-face)" filter="url(#soft-shadow)" />
+  <rect x="28" y="43" width="72" height="54" rx="17" fill="#ffffff" stroke="#f1f5f9" stroke-width="1.5" />
+
+  <!-- Iconic Capsule Eyes (Grok style ▮ ▮) -->
+  <rect x="45" y="55" width="10" height="26" rx="5" fill="#0f172a" />
+  <circle cx="48" cy="60" r="1.6" fill="#38bdf8" opacity="0.9" />
+  <rect x="73" y="55" width="10" height="26" rx="5" fill="#0f172a" />
+  <circle cx="76" cy="60" r="1.6" fill="#38bdf8" opacity="0.9" />
+
+  <!-- Mouth -->
+  <path d="M58 88C61.5 90.5 66.5 90.5 70 88" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" />
+
+  <!-- Cheeks -->
+  <ellipse cx="38" cy="74" rx="4.5" ry="2.5" fill="#f43f5e" opacity="0.4" />
+  <ellipse cx="90" cy="74" rx="4.5" ry="2.5" fill="#f43f5e" opacity="0.4" />
+
+  <!-- Forehead Git Node -->
+  <circle cx="64" cy="48" r="2.5" fill="#10b981" />
+</svg>

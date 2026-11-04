@@ -86,7 +86,11 @@
   --ink: #3b342c;
 }
 
-[data-theme="dark"] {
+/* 暗色模式：高优先级适配 */
+[data-theme="dark"],
+:root[data-theme="dark"],
+html.dark {
+  color-scheme: dark;
   --c-bg: #14161f;
   --c-surface: #1c1f2b;
   --c-surface-2: #222636;
@@ -106,8 +110,9 @@
   --c-success-soft: #1b3428;
 }
 
-/* 界面外观：经典(冷灰白) / 暖纸(手账纸张，默认) / 薄雾(青灰清新) */
-[data-appearance="paper"] {
+/* 界面外观：经典(冷灰白) / 暖纸(手账纸张，默认) / 薄雾(青灰清新) - 仅在非暗色模式下应用 */
+[data-appearance="paper"]:not([data-theme="dark"]):not(.dark),
+:root[data-appearance="paper"]:not([data-theme="dark"]):not(.dark) {
   --c-bg: #f5f5f4;
   --c-surface: #fffdf7;
   --c-surface-2: #fafaf9;
@@ -119,7 +124,8 @@
   --c-muted: #78716c;
 }
 
-[data-appearance="mist"] {
+[data-appearance="mist"]:not([data-theme="dark"]):not(.dark),
+:root[data-appearance="mist"]:not([data-theme="dark"]):not(.dark) {
   --c-bg: #e6f0ee;
   --c-surface: #fbfefd;
   --c-surface-2: #f3f8f7;
@@ -132,6 +138,7 @@
 }
 
 [data-hand="1"] body,
+[data-hand="1"] #root,
 [data-hand="1"] .field {
   font-family: var(--f-hand);
 }

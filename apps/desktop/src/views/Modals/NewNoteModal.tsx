@@ -4,8 +4,9 @@ import { NoteKind } from '../../types/note';
 interface NewNoteModalProps {
   categories: string[];
   defaultCategory?: string;
-  onConfirm: (folder: string, title: string, kind: NoteKind, templateContent: string) => void;
+  onConfirm: (folder: string, title: string, kind: NoteKind, templateContent: string) => Promise<void>;
   onClose: () => void;
+  onCreateFolder?: (parent: string, name: string) => Promise<string>;
 }
 
 const TEMPLATES = [
@@ -44,19 +45,69 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
   defaultCategory = '',
   onConfirm,
   onClose,
+  onCreateFolder,
 }) => {
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<NoteKind>('md');
-  const [selectedFolder, setSelectedFolder] = useState(defaultCategory || categories[0] || '默认分类');
+  const [selectedFolder, setSelectedFolder] = useState(defaultCategory ?? categories[0] ?? '');
+  const [availableCategories, setAvailableCategories] = useState<string[]>(categories);
   const [selectedTemplate, setSelectedTemplate] = useState('blank');
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [showInlineNewFolder, setShowInlineNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    setAvailableCategories(categories);
+  }, [categories]);
+
+  const handleQuickCreateFolder = async () => {
+    const trimmed = newFolderName.trim();
+    if (!trimmed) return;
+    if (/[/\\:*?"<>|]/.test(trimmed)) {
+      setError('文件夹名称不能包含 / \\ : * ? " < > | 等非法字符');
+      return;
+    }
+    if (!onCreateFolder) return;
+
+    setCreatingFolder(true);
+    setError('');
+    try {
+      const fullPath = await onCreateFolder(selectedFolder, trimmed);
+      setAvailableCategories((prev) => (prev.includes(fullPath) ? prev : [...prev, fullPath]));
+      setSelectedFolder(fullPath);
+      setNewFolderName('');
+      setShowInlineNewFolder(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanTitle = title.trim() || '未命名笔记';
+    if (/[/\\:*?"<>|]/.test(cleanTitle)) {
+      setError('文件名不能包含 / \\ : * ? " < > | 等非法字符');
+      return;
+    }
     const tpl = TEMPLATES.find((t) => t.id === selectedTemplate) || TEMPLATES[0];
-    const initialBody = tpl.content(cleanTitle);
+    let initialBody = tpl.content(cleanTitle);
+    if (kind === 'docx' || kind === 'html') {
+      initialBody = `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>${cleanTitle}</h1><p>在此开始记录你的思考，支持类似 Word 的排版与直接粘贴外部富文本原格式...</p></body></html>`;
+    }
 
-    onConfirm(selectedFolder, cleanTitle, kind, initialBody);
+    setCreating(true);
+    setError('');
+    try {
+      await onConfirm(selectedFolder, cleanTitle, kind, initialBody);
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : String(createError));
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -89,36 +140,88 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
           </div>
 
           {/* Folder & Format Type */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-500 font-medium mb-1.5">存放位置</label>
-              <select
-                value={selectedFolder}
-                onChange={(e) => setSelectedFolder(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-emerald-500"
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    📁 {c}
-                  </option>
-                ))}
-              </select>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-slate-500 font-medium">存放位置</label>
+                  {!showInlineNewFolder && onCreateFolder && (
+                    <button
+                      type="button"
+                      onClick={() => setShowInlineNewFolder(true)}
+                      className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      ＋ 新建文件夹
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={selectedFolder}
+                  onChange={(e) => setSelectedFolder(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">根目录</option>
+                  {availableCategories.map((c) => (
+                    <option key={c} value={c}>
+                      📁 {c.split('/').join(' / ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-medium mb-1.5">格式类型</label>
+                <select
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value as NoteKind)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-emerald-500 font-medium"
+                >
+                  <option value="docx">Word 文档 (.docx) — Word 拟真排版与原格式粘贴</option>
+                  <option value="html">富文本笔记 (.html) — 完整图文、表格与样式保留</option>
+                  <option value="md">Markdown 笔记 (.md) — 轻量标记语法</option>
+                  <option value="txt">纯文本 (.txt)</option>
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-slate-500 font-medium mb-1.5">格式类型</label>
-              <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value as NoteKind)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-emerald-500"
-              >
-                <option value="md">Markdown (.md)</option>
-                <option value="html">HTML 文件 (.html)</option>
-                <option value="txt">纯文本 (.txt)</option>
-                <option value="docx">Word 文档 (.docx)</option>
-                <option value="pptx">PPT 幻灯片 (.pptx)</option>
-              </select>
-            </div>
+            {showInlineNewFolder && (
+              <div className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/20 space-y-1.5 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+                  <span>在「{selectedFolder ? selectedFolder.split('/').join(' / ') : '根目录'}」下创建新文件夹：</span>
+                  <button
+                    type="button"
+                    onClick={() => { setShowInlineNewFolder(false); setNewFolderName(''); }}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleQuickCreateFolder();
+                      }
+                    }}
+                    placeholder="例如：技术方案、架构演进"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-none focus:border-emerald-500"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleQuickCreateFolder()}
+                    disabled={creatingFolder || !newFolderName.trim()}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                  >
+                    {creatingFolder ? '创建中…' : '确认创建'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Templates */}
@@ -149,20 +252,24 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
             </div>
           )}
 
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={onClose}
+              disabled={creating}
               className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               取消
             </button>
             <button
               type="submit"
+              disabled={creating}
               className="px-5 py-2 rounded-lg text-white font-medium shadow-sm hover:shadow"
               style={{ background: 'var(--accent-600, #059669)' }}
             >
-              创建并打开 ↵
+              {creating ? '创建中…' : '创建并打开 ↵'}
             </button>
           </div>
         </form>

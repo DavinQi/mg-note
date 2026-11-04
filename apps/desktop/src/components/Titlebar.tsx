@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppLogoIcon } from './AppLogo';
 
 interface TitlebarProps {
   title?: string;
@@ -18,11 +19,11 @@ export const Titlebar: React.FC<TitlebarProps> = ({ title = 'mg-node', children 
         color: 'var(--c-text-2, #555b6e)',
       }}
     >
-      <div data-tauri-drag-region className="flex-1 flex items-center h-full">
+      <div data-tauri-drag-region className="flex-1 flex items-center h-full gap-2">
+        <AppLogoIcon size={20} theme="emerald" />
         <span
           data-tauri-drag-region
-          className="text-xs font-medium text-slate-500 tracking-wide truncate"
-          style={{ color: 'var(--c-muted, #8a90a2)' }}
+          className="text-xs font-semibold text-slate-600 dark:text-slate-300 tracking-wide truncate font-mono"
         >
           {title}
         </span>

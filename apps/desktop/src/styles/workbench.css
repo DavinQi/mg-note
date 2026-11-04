@@ -8,6 +8,174 @@
   background-color: var(--c-surface, #fffdf7);
 }
 
+.sync-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 82px;
+  height: 34px;
+  margin: 0 4px 0 2px;
+  padding: 0 14px;
+  border: 1px solid var(--accent-600, #059669);
+  border-radius: 9px;
+  background: var(--accent-600, #059669);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(5, 150, 105, .2);
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.sync-button:hover:not(:disabled) {
+  background: var(--accent-700, #047857);
+  box-shadow: 0 3px 8px rgba(5, 150, 105, .26);
+  transform: translateY(-1px);
+}
+
+.sync-button:disabled {
+  opacity: .7;
+  cursor: wait;
+}
+
+/* AI 助手卡通快捷按钮 (紧邻同步按钮) */
+.wb-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 9px;
+  border: 1px solid var(--c-line, #e2e8f0);
+  background: var(--c-surface, #ffffff);
+  color: var(--c-text, #1e293b);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all .18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.wb-ai-btn:hover {
+  border-color: #f472b6;
+  background: #fffdfa;
+  color: #be185d;
+  box-shadow: 0 3px 8px rgba(244, 114, 182, 0.22);
+  transform: translateY(-1px);
+}
+
+.wb-ai-btn.is-active {
+  border-color: #ec4899;
+  background: #fdf2f8;
+  color: #9d174d;
+  box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.22);
+}
+
+.wb-ai-btn .cartoon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #fef08a 0%, #fbcfe8 50%, #fed7aa 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.wb-ai-btn:hover .cartoon-icon {
+  transform: scale(1.18) rotate(-7deg);
+}
+
+.wb-ai-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.wb-ai-sparkle {
+  font-size: 11px;
+  display: inline-block;
+  animation: ai-sparkle-pulse 2.2s infinite ease-in-out;
+}
+
+@keyframes ai-sparkle-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* AI 面板内渲染的 Markdown 格式 */
+.wb-ai-rendered-markdown {
+  word-break: break-word;
+}
+
+.wb-ai-rendered-markdown h1,
+.wb-ai-rendered-markdown h2,
+.wb-ai-rendered-markdown h3,
+.wb-ai-rendered-markdown h4 {
+  font-weight: 700;
+  margin: 10px 0 4px;
+  color: var(--c-text, #1e293b);
+}
+
+.wb-ai-rendered-markdown h1 { font-size: 14px; }
+.wb-ai-rendered-markdown h2 { font-size: 13px; }
+.wb-ai-rendered-markdown h3 { font-size: 12px; }
+
+.wb-ai-rendered-markdown p {
+  margin: 4px 0 8px;
+}
+
+.wb-ai-rendered-markdown ul,
+.wb-ai-rendered-markdown ol {
+  padding-left: 18px;
+  margin: 4px 0 8px;
+}
+
+.wb-ai-rendered-markdown li {
+  margin: 2px 0;
+}
+
+.wb-ai-rendered-markdown blockquote {
+  border-left: 3px solid var(--accent-500, #10b981);
+  background: var(--accent-50, #ecfdf5);
+  padding: 4px 10px;
+  margin: 6px 0;
+  border-radius: 4px;
+  color: var(--accent-800, #065f46);
+  font-size: 11.5px;
+}
+
+.wb-ai-rendered-markdown code {
+  background: var(--c-surface-3, #f1f5f9);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #db2777;
+}
+
+.wb-ai-rendered-markdown pre {
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.wb-ai-rendered-markdown pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 11px;
+}
+
 /* 侧栏样式 */
 .wb-sidebar {
   width: 220px;
@@ -59,6 +227,12 @@
   font-weight: 600;
 }
 
+[data-theme="dark"] .wb-folder-item.is-active,
+.dark .wb-folder-item.is-active {
+  background: rgba(16, 185, 129, 0.18);
+  color: var(--accent-300, #6ee7b7);
+}
+
 .wb-folder-badge {
   font-size: 10px;
   font-family: var(--f-mono, monospace);
@@ -68,9 +242,106 @@
   border-radius: 999px;
 }
 
+[data-theme="dark"] .wb-folder-badge,
+.dark .wb-folder-badge {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .wb-folder-item.is-active .wb-folder-badge {
   background: var(--accent-200, #a7f3d0);
   color: var(--accent-900, #064e3b);
+}
+
+[data-theme="dark"] .wb-folder-item.is-active .wb-folder-badge,
+.dark .wb-folder-item.is-active .wb-folder-badge {
+  background: rgba(16, 185, 129, 0.35);
+  color: var(--accent-100, #d1fae5);
+}
+
+.wb-folder-tree {
+  padding: 2px 0;
+}
+
+.wb-folder-item__label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.wb-folder-item__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-folder-toggle {
+  display: inline-flex;
+  width: 14px;
+  height: 18px;
+  flex: 0 0 14px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--c-muted, #8a90a2);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.wb-folder-toggle:hover {
+  background: var(--c-surface-3, #f0f1f6);
+}
+
+.wb-folder-toggle--empty {
+  display: inline-block;
+}
+
+.wb-context-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: transparent;
+}
+
+.wb-context-menu {
+  position: fixed;
+  z-index: 81;
+  min-width: 188px;
+  padding: 5px;
+  border: 1px solid var(--c-line, #eceef3);
+  border-radius: 10px;
+  background: var(--c-surface, #fffdf7);
+  box-shadow: 0 12px 32px rgba(31, 36, 51, .18);
+  color: var(--c-text, #1f2433);
+  font-size: 12px;
+}
+
+.wb-context-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.wb-context-menu button:hover:not(:disabled) {
+  background: var(--c-surface-3, #f0f1f6);
+}
+
+.wb-context-menu button:disabled {
+  color: var(--c-muted, #8a90a2);
+  cursor: default;
 }
 
 /* 中间笔记列表 */
@@ -105,7 +376,7 @@
 
 .wb-search-input:focus {
   border-color: var(--accent-500, #10b981);
-  background: #ffffff;
+  background: var(--c-surface, #ffffff);
 }
 
 .wb-notes-scroll {
@@ -117,7 +388,7 @@
 .wb-note-card {
   padding: 12px;
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--c-surface-2, #fafaf9);
   border: 1px solid var(--c-line, #eceef3);
   margin-bottom: 8px;
   cursor: pointer;
@@ -134,6 +405,12 @@
   border-color: var(--accent-500, #10b981);
   background: var(--accent-50, #ecfdf5);
   box-shadow: 0 0 0 1.5px var(--accent-300, #6ee7b7);
+}
+
+[data-theme="dark"] .wb-note-card.is-active,
+.dark .wb-note-card.is-active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: var(--accent-500, #10b981);
 }
 
 .wb-note-title {
@@ -175,7 +452,92 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--c-surface, #ffffff);
+}
+
+.docx-editor-toolbar {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--c-line, #eceef3);
+  background: var(--c-surface, #fffdf7);
+}
+
+.docx-editor-toolbar__title,
+.docx-editor-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.docx-editor-toolbar__title strong {
+  overflow: hidden;
+  color: var(--c-text, #1f2433);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docx-editor-toolbar__status {
+  color: var(--c-muted, #8a90a2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.docx-editor-toolbar__actions button {
+  min-width: 28px;
+  height: 27px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--c-text-2, #555b6e);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.docx-editor-toolbar__actions button:hover {
+  border-color: var(--c-line, #eceef3);
+  background: var(--c-surface-2, #fafaf9);
+}
+
+.docx-editor-toolbar__divider {
+  height: 19px;
+  border-left: 1px solid var(--c-line, #eceef3);
+}
+
+.docx-editor-page {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--c-bg, #f1f2f4);
+}
+
+.docx-editor-page iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  border: 0;
+  background: var(--c-bg, #f1f2f4);
+}
+
+.docx-editor-hint {
+  padding: 7px 16px;
+  border-top: 1px solid var(--c-line, #eceef3);
+  color: var(--c-muted, #8a90a2);
+  font-size: 10px;
+}
+
+.docx-editor-error {
+  margin: auto;
+  padding: 28px;
+  color: #b91c1c;
+  font-size: 13px;
 }
 
 /* 文档查看器 A4 拟真效果 */
@@ -193,11 +555,111 @@
   width: 100%;
   max-width: 780px;
   min-height: 840px;
-  background: #ffffff;
+  background: var(--c-surface, #ffffff);
+  color: var(--c-text, #1f2433);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(30, 35, 60, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--c-line, #eceef3);
   padding: 48px;
   display: flex;
   flex-direction: column;
 }
+
+/* 拖拽交互样式 (Drag & Drop) */
+/* 强制 WebKit (macOS) 启用 div 原生拖拽能力 */
+.wb-folder-item,
+.wb-note-card {
+  -webkit-user-drag: element !important;
+  user-drag: element !important;
+}
+
+.wb-folder-item[draggable],
+.wb-folder-item[draggable="true"],
+.wb-note-card[draggable],
+.wb-note-card[draggable="true"] {
+  -webkit-user-drag: element !important;
+  user-drag: element !important;
+  cursor: grab;
+}
+
+.wb-folder-item[draggable]:active,
+.wb-folder-item[draggable="true"]:active,
+.wb-note-card[draggable]:active,
+.wb-note-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.wb-folder-item.is-drag-source,
+.wb-note-card.is-drag-source {
+  opacity: 0.45;
+  filter: grayscale(30%);
+}
+
+/* 拖拽活跃状态下，防止子元素产生额外的 dragleave 导致丢焦闪烁 */
+.wb-folder-tree.is-dragging-active .wb-folder-item * {
+  pointer-events: none;
+}
+
+/* 聚焦高亮：明确且吸睛的移入高亮边框与光标指示 */
+.wb-folder-item.is-drop-target {
+  background: var(--accent-100, #d1fae5) !important;
+  color: var(--accent-950, #064e3b) !important;
+  outline: 2px solid var(--accent-600, #059669) !important;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.28) !important;
+  transform: translateX(4px);
+  cursor: copy !important;
+  transition: all 0.1s ease;
+}
+
+/* 当前所在目录指示（中性友好） */
+.wb-folder-item.is-drop-current {
+  background: var(--c-surface-3, #f1f5f9) !important;
+  color: var(--c-text-2, #64748b) !important;
+  outline: 1.5px dashed var(--c-line, #94a3b8) !important;
+  outline-offset: -2px;
+  cursor: default;
+}
+
+/* 真正不可移入（如深层循环嵌套） */
+.wb-folder-item.is-drop-invalid {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  outline: 1.5px dashed #ef4444 !important;
+  outline-offset: -2px;
+  cursor: not-allowed !important;
+}
+
+.wb-drop-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-800, #065f46);
+  background: var(--accent-200, #a7f3d0);
+  border: 1px solid var(--accent-400, #34d399);
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.wb-folder-item.is-drop-current .wb-drop-badge {
+  color: var(--c-text-2, #64748b);
+  background: var(--c-surface-2, #e2e8f0);
+  border-color: var(--c-line, #cbd5e1);
+}
+
+.wb-folder-item.is-drop-invalid .wb-drop-badge {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.wb-notes-scroll.is-drop-target {
+  background: color-mix(in srgb, var(--accent-50, #ecfdf5) 50%, transparent);
+  outline: 2px dashed var(--accent-500, #10b981);
+  outline-offset: -4px;
+}
+
