@@ -1,4 +1,12 @@
 import React, { useState } from 'react';
+import {
+  WrenchIcon,
+  CloseIcon,
+  AlertTriangleIcon,
+  SparklesIcon,
+  LinkIcon,
+  CheckIcon,
+} from '../../components/Icons';
 
 export interface GitEnvironmentStatus {
   isInstalled: boolean;
@@ -82,8 +90,8 @@ export const GitEnvironmentModal: React.FC<GitEnvironmentModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center gap-3 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-xl">
-            🛠️
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-amber-600">
+            <WrenchIcon size={20} />
           </div>
           <div className="flex-1">
             <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">
@@ -95,9 +103,9 @@ export const GitEnvironmentModal: React.FC<GitEnvironmentModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm p-1"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm p-1 cursor-pointer"
           >
-            ✕
+            <CloseIcon size={12} />
           </button>
         </div>
 
@@ -105,7 +113,7 @@ export const GitEnvironmentModal: React.FC<GitEnvironmentModalProps> = ({
         <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
           <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 leading-relaxed">
             <div className="font-semibold text-amber-800 dark:text-amber-300 mb-1 flex items-center gap-1.5">
-              <span>⚠️</span> 当前系统尚未检测到 Git 命令行工具
+              <AlertTriangleIcon size={14} className="text-amber-600" /> 当前系统尚未检测到 Git 命令行工具
             </div>
             <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90">
               mg-node 采用基于 Git 的去中心化同步架构。在未安装 Git 的情况下，您仍然可以在本地创建并编辑离线笔记，但无法进行远程 GitHub / Gitee 的克隆、拉取与推送。
@@ -122,7 +130,7 @@ export const GitEnvironmentModal: React.FC<GitEnvironmentModalProps> = ({
               <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20 flex items-center justify-between gap-3">
                 <div className="flex-1">
                   <div className="font-semibold text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-1.5">
-                    <span>⚡</span> 一键安装 Xcode Command Line Tools
+                    <SparklesIcon size={13} className="text-emerald-600" /> 一键安装 Xcode Command Line Tools
                   </div>
                   <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">
                     macOS 官方原生开发者套件，内置完整 Git 环境，点击后系统将弹出官方安装向导。
@@ -131,7 +139,7 @@ export const GitEnvironmentModal: React.FC<GitEnvironmentModalProps> = ({
                 <button
                   onClick={handleAutoInstall}
                   disabled={installing}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs whitespace-nowrap shadow-xs transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs whitespace-nowrap shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {installing ? '正在启动…' : '一键安装'}
                 </button>
@@ -141,7 +149,7 @@ export const GitEnvironmentModal: React.FC<GitEnvironmentModalProps> = ({
             <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
               <div className="flex-1">
                 <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
-                  <span>🌐</span> 官网下载独立安装包
+                  <LinkIcon size={13} className="text-slate-600" /> 官网下载独立安装包
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
                   前往 Git 官方网站（git-scm.com）下载对应系统的最新稳定版安装器。

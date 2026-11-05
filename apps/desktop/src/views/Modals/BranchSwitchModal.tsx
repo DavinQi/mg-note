@@ -1,4 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import {
+  GitBranchIcon,
+  LockClosedIcon,
+  CloseIcon,
+  InfoCircleIcon,
+  SearchIcon,
+  AlertTriangleIcon,
+  CheckIcon,
+  PlusIcon,
+  SyncIcon,
+  CloudIcon,
+} from '../../components/Icons';
 
 export interface GitBranchItem {
   name: string;
@@ -122,7 +134,9 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <span className="text-xl">🌿</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <GitBranchIcon size={18} />
+            </div>
             <div>
               <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 Git 分支管理与切换
@@ -133,22 +147,24 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
                   {currentBranch || 'my-git-note'}
                 </span>
                 {currentBranch === 'my-git-note' && (
-                  <span className="ml-1.5 text-[10px] text-emerald-600">（专属独立笔记分支 🛡️）</span>
+                  <span className="ml-1.5 text-[10px] text-emerald-600 inline-flex items-center gap-0.5">
+                    （专属独立笔记分支 <LockClosedIcon size={10} />）
+                  </span>
                 )}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm p-1 rounded-md"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm p-1 rounded-md cursor-pointer"
           >
-            ✕
+            <CloseIcon size={12} />
           </button>
         </div>
 
         {/* Notice Info */}
         <div className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-300 flex items-start gap-2">
-          <span className="text-sm">💡</span>
+          <InfoCircleIcon size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
           <div>
             <span>
               应用默认在专属笔记分支 <strong className="font-mono text-emerald-600">my-git-note</strong> 中工作，绝不会误改代码主分支（main / master）。
@@ -163,7 +179,9 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs flex items-center">
+                <SearchIcon size={12} />
+              </span>
               <input
                 type="text"
                 placeholder="搜索分支名称或提交信息..."
@@ -191,9 +209,10 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
 
             <button
               onClick={() => setShowCreateInput((prev) => !prev)}
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-xs flex items-center gap-1 transition-colors shadow-xs"
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-xs flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
             >
-              <span>＋</span> 新建分支
+              <PlusIcon size={12} />
+              <span>新建分支</span>
             </button>
           </div>
 
@@ -203,7 +222,9 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
               onSubmit={handleCreateSubmit}
               className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/30 dark:bg-emerald-950/20 flex items-center gap-2 animate-in fade-in slide-in-from-top-1"
             >
-              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">🌿 新分支名:</span>
+              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                <GitBranchIcon size={12} /> 新分支名:
+              </span>
               <input
                 type="text"
                 placeholder="例如: daily-notes 或 reading-2026"
@@ -234,13 +255,19 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
         {/* Alerts */}
         {error && (
           <div className="mb-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-[11px] text-red-600 dark:text-red-400 flex items-center justify-between">
-            <span>⚠️ {error}</span>
-            <button onClick={() => setError('')} className="text-xs">✕</button>
+            <span className="flex items-center gap-1.5">
+              <AlertTriangleIcon size={13} className="text-red-500" />
+              {error}
+            </span>
+            <button onClick={() => setError('')} className="text-xs cursor-pointer">
+              <CloseIcon size={11} />
+            </button>
           </div>
         )}
         {successMsg && (
-          <div className="mb-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-700 dark:text-emerald-300">
-            ✓ {successMsg}
+          <div className="mb-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+            <CheckIcon size={13} className="text-emerald-600" />
+            <span>{successMsg}</span>
           </div>
         )}
 
@@ -248,7 +275,7 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
         <div className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-[220px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs gap-2">
-              <span className="animate-spin text-lg">⟳</span>
+              <SyncIcon size={18} className="animate-spin text-emerald-600" />
               <span>正在读取本地与远程分支…</span>
             </div>
           ) : filteredBranches.length === 0 ? (
@@ -272,31 +299,32 @@ export const BranchSwitchModal: React.FC<BranchSwitchModalProps> = ({
                 >
                   <div className="flex-1 min-w-0 mr-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-100 truncate">
+                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1">
+                        <GitBranchIcon size={12} className="text-slate-400" />
                         {b.name}
                       </span>
 
                       {isCurrent && (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
-                          ✓ 当前活动
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-0.5">
+                          <CheckIcon size={10} /> 当前活动
                         </span>
                       )}
 
                       {isDedicatedNote && (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/50">
-                          🌿 专属笔记分支
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/50 flex items-center gap-0.5">
+                          <GitBranchIcon size={10} /> 专属笔记分支
                         </span>
                       )}
 
                       {isMain && (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/50">
-                          🛡️ 代码主分支
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/50 flex items-center gap-0.5">
+                          <LockClosedIcon size={9} /> 代码主分支
                         </span>
                       )}
 
                       {b.isRemote && (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800">
-                          🌐 远程
+                        <span className="px-1.5 py-0.2 rounded text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 flex items-center gap-1">
+                          <CloudIcon size={10} /> 远程
                         </span>
                       )}
                     </div>

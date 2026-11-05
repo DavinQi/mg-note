@@ -1,4 +1,11 @@
 import React from 'react';
+import {
+  CheckSquareIcon,
+  QuoteIcon,
+  LinkIcon,
+  PhotoIcon,
+  TableIcon,
+} from '../../components/Icons';
 
 interface WpsToolbarProps {
   onAction: (action: string, value?: string) => void;
@@ -104,17 +111,17 @@ export const WpsToolbar: React.FC<WpsToolbarProps> = ({ onAction, wordCount = 0 
           </button>
           <button
             onClick={() => onAction('task-list')}
-            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300"
+            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center justify-center"
             title="任务清单"
           >
-            ☑
+            <CheckSquareIcon size={14} />
           </button>
           <button
             onClick={() => onAction('quote')}
-            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300"
+            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center justify-center"
             title="引用块"
           >
-            ❝
+            <QuoteIcon size={13} />
           </button>
         </div>
 
@@ -129,24 +136,25 @@ export const WpsToolbar: React.FC<WpsToolbarProps> = ({ onAction, wordCount = 0 
           </button>
           <button
             onClick={() => onAction('table')}
-            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300"
+            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center gap-1 text-[11px]"
             title="插入表格"
           >
-            ⊞ 表格
+            <TableIcon size={13} />
+            <span>表格</span>
           </button>
           <button
             onClick={() => onAction('link')}
-            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300"
+            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center justify-center"
             title="超链接"
           >
-            🔗
+            <LinkIcon size={13} />
           </button>
           <button
             onClick={() => onAction('image')}
-            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300"
+            className="p-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center justify-center"
             title="插入图片"
           >
-            🖼
+            <PhotoIcon size={14} />
           </button>
         </div>
       </div>

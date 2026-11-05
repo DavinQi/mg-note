@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
 import { NoteKind } from '../../types/note';
+import {
+  FilePlusIcon,
+  FileGenericIcon,
+  CalendarIcon,
+  UsersIcon,
+  WrenchIcon,
+  FolderIcon,
+  FolderPlusIcon,
+  CloseIcon,
+  NoteFormatIcon,
+  PlusIcon,
+} from '../../components/Icons';
 
 interface NewNoteModalProps {
   categories: string[];
@@ -14,28 +26,28 @@ const TEMPLATES = [
     id: 'blank',
     name: '空白文档',
     desc: '从白纸开始记录灵感',
-    icon: '📝',
+    icon: <FileGenericIcon size={14} className="text-slate-500" />,
     content: (title: string) => `# ${title}\n\n`,
   },
   {
     id: 'daily',
-    name: '🗓 工作日报',
+    name: '工作日报',
     desc: '今日完成、明日计划与遇到的问题',
-    icon: '🗓',
+    icon: <CalendarIcon size={14} className="text-blue-500" />,
     content: (title: string) => `# ${title}\n\n## 1. 今日完成事项\n- \n\n## 2. 明日推进计划\n- \n\n## 3. 阻塞与思考\n- 无\n`,
   },
   {
     id: 'meeting',
-    name: '🧑‍🤝‍🧑 会议纪要',
+    name: '会议纪要',
     desc: '参会人、讨论要点与行动项 Action Items',
-    icon: '🧑‍🤝‍🧑',
+    icon: <UsersIcon size={14} className="text-emerald-500" />,
     content: (title: string) => `# ${title}\n\n- **时间**：${new Date().toLocaleDateString()}\n- **参会人**：\n- **议题**：\n\n## 讨论核心纪要\n1. \n\n## 行动项 (TODO)\n- [ ] 负责人：完成项\n`,
   },
   {
     id: 'tech',
-    name: '🛠 技术方案',
+    name: '技术方案',
     desc: '背景、架构选型、接口定义与压测指标',
-    icon: '🛠',
+    icon: <WrenchIcon size={14} className="text-amber-500" />,
     content: (title: string) => `# ${title}\n\n## 1. 背景与业务价值\n\n## 2. 总体架构图\n\n## 3. 核心 API 与数据模型\n\n## 4. 上线与回滚预案\n`,
   },
 ];
@@ -117,11 +129,12 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
         style={{ background: 'var(--c-surface, #ffffff)' }}
       >
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <span>📄</span> 新建笔记文件
+          <h3 className="font-bold text-sm flex items-center gap-2 text-slate-800 dark:text-slate-100">
+            <FilePlusIcon size={16} className="text-emerald-600" />
+            <span>新建笔记文件</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm">
-            ✕
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer p-1">
+            <CloseIcon size={12} />
           </button>
         </div>
 
@@ -149,9 +162,9 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowInlineNewFolder(true)}
-                      className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      ＋ 新建文件夹
+                      <PlusIcon size={10} /> 新建文件夹
                     </button>
                   )}
                 </div>
@@ -163,7 +176,7 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
                   <option value="">根目录</option>
                   {availableCategories.map((c) => (
                     <option key={c} value={c}>
-                      📁 {c.split('/').join(' / ')}
+                      {c.split('/').join(' / ')}
                     </option>
                   ))}
                 </select>
@@ -176,9 +189,9 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
                   onChange={(e) => setKind(e.target.value as NoteKind)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-emerald-500 font-medium"
                 >
-                  <option value="docx">Word 文档 (.docx) — Word 拟真排版与原格式粘贴</option>
-                  <option value="html">富文本笔记 (.html) — 完整图文、表格与样式保留</option>
-                  <option value="md">Markdown 笔记 (.md) — 轻量标记语法</option>
+                  <option value="md">Markdown 笔记 (.md) — 轻量标记语法与实时双栏</option>
+                  <option value="docx">Word 文档 (.docx) — Word 拟真排版与富文本编辑</option>
+                  <option value="html">富文本笔记 (.html) — 图文排版与网页样式</option>
                   <option value="txt">纯文本 (.txt)</option>
                 </select>
               </div>
@@ -191,9 +204,9 @@ export const NewNoteModal: React.FC<NewNoteModalProps> = ({
                   <button
                     type="button"
                     onClick={() => { setShowInlineNewFolder(false); setNewFolderName(''); }}
-                    className="text-slate-400 hover:text-slate-600"
+                    className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                   >
-                    ✕
+                    <CloseIcon size={10} />
                   </button>
                 </div>
                 <div className="flex gap-2">

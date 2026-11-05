@@ -200,14 +200,14 @@ export async function askKnowledgeBase(params: {
   // 3. Fallback: Intelligent Local Synthesis
   if (topMatches.length === 0 && candidateNotes.length === 0) {
     return {
-      answer: `在「${scopeLabel}」范围内暂无任何笔记。\n\n您可以先创建笔记，或在右上方点击「⚙️ 设置」配置 API Key。`,
+      answer: `在「${scopeLabel}」范围内暂无任何笔记。\n\n您可以先创建笔记，或在右上方点击「服务商设置」配置 API Key。`,
       citations: [],
     };
   }
 
   if (topMatches.length === 0) {
     return {
-      answer: `在知识库（范围：${scopeLabel}，共检索 ${candidateNotes.length} 篇笔记）中未找到与「**${question}**」直接匹配的内容。\n\n建议：\n- 换个关键词重新提问（例如：缓存、架构、方案）\n- 或在右上方切换到「⚙️ 设置」配置 DeepSeek / OpenAI API Key 开启全能大模型问答。`,
+      answer: `在知识库（范围：${scopeLabel}，共检索 ${candidateNotes.length} 篇笔记）中未找到与「**${question}**」直接匹配的内容。\n\n建议：\n- 换个关键词重新提问（例如：缓存、架构、方案）\n- 或在右上方切换到「服务商设置」配置 DeepSeek / OpenAI API Key 开启全能大模型问答。`,
       citations: [],
     };
   }
@@ -215,7 +215,7 @@ export async function askKnowledgeBase(params: {
   // Synthesize local answer based on matched notes
   const noteList = topMatches.map((m, i) => `• **[${i + 1}] ${m.note.title}**\n  ${m.note.snippet || m.note.content?.slice(0, 100) || '包含相关关键词'}`).join('\n');
 
-  const answer = `根据您知识库中检索到的 **${topMatches.length}** 篇相关笔记，整理结论如下：\n\n${noteList}\n\n> 💡 **来源引用**：可点击下方来源链接快速跳转至对应笔记进行查阅与编辑。\n*(当前为离线知识库检索模式；如需深层语义问答，可前往设置配置 API Key)*`;
+  const answer = `根据您知识库中检索到的 **${topMatches.length}** 篇相关笔记，整理结论如下：\n\n${noteList}\n\n> **来源引用**：可点击下方来源链接快速跳转至对应笔记进行查阅与编辑。\n*(当前为离线知识库检索模式；如需深层语义问答，可前往设置配置 API Key)*`;
 
   return { answer, citations };
 }
@@ -233,7 +233,7 @@ export async function generateAiSummary(params: {
   let scopeTitle = '';
 
   if (scope === 'current') {
-    if (!selectedNote) return '⚠️ 请先在中间列表中选中一篇笔记后再生成单篇总结。';
+    if (!selectedNote) return '请先在中间列表中选中一篇笔记后再生成单篇总结。';
     targetNotes = [selectedNote];
     scopeTitle = `笔记《${selectedNote.title}》`;
   } else if (scope === 'category') {
@@ -248,7 +248,7 @@ export async function generateAiSummary(params: {
   }
 
   if (targetNotes.length === 0) {
-    return `⚠️ 所选范围（${scopeTitle}）下暂无笔记内容。`;
+    return `所选范围（${scopeTitle}）下暂无笔记内容。`;
   }
 
   // If API Key is configured, use real LLM
@@ -260,10 +260,10 @@ export async function generateAiSummary(params: {
 
       const systemPrompt = `你是一个高级笔记与知识管理助手。请针对用户提供的笔记列表生成一份结构清晰、高可读性的 Markdown 总结或周报。
 输出必须包含以下部分：
-## 📌 核心要点
-## 📝 待办与行动项 (Todo Checklist)
-## 📊 涉及笔记与进展
-## 💡 改进与思考建议`;
+## 核心要点
+## 待办与行动项 (Todo Checklist)
+## 涉及笔记与进展
+## 改进与思考建议`;
 
       const userPrompt = `请对以下【${scopeTitle}】进行整理总结：\n\n${summaryContext}`;
 
@@ -301,18 +301,18 @@ export async function generateAiSummary(params: {
   return `# AI 知识库总结报告 · ${scopeTitle}
 > 生成日期：${dateStr} · 共涵盖 ${targetNotes.length} 篇笔记
 
-## 📌 核心要点
+## 核心要点
 - 本周期重点围绕知识库中关于 **${targetNotes[0]?.title || '关键业务'}** 等模块展开沉淀。
 - 笔记结构完整，覆盖架构方案、问题排查与技术笔记。
 
-## 📝 待办与行动项
+## 待办与行动项
 - [ ] 复核 ${targetNotes[0]?.title || '当前重点'} 的遗留待办事项 [1]
 - [ ] 针对关键改动进行 git 同步与远端私有仓库备份
 - [ ] 补充压测数据与边界条件验证
 
-## 📊 涉及笔记列表
+## 涉及笔记列表
 ${noteItems}
 
-## 💡 AI 建议
+## 建议与规划
 建议保持良好的两级目录归档习惯，及时将零散的碎片笔记整理至对应主题文件夹中。`;
 }

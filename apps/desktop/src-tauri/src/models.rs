@@ -129,3 +129,21 @@ pub struct GitEnvironmentStatus {
     pub can_auto_install: bool,
     pub error_message: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportFilesResult {
+    pub success_count: usize,
+    pub total_count: usize,
+    pub imported_files: Vec<String>,
+    pub errors: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportFolderResult {
+    pub folder_name: String,
+    pub rel_path: String,
+    pub file_count: usize,
+    pub folder_count: usize,
+}

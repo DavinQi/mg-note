@@ -1,5 +1,16 @@
 import React from 'react';
 import { NoteKind } from '../../types/note';
+import {
+  DocxIcon,
+  PdfIcon,
+  PptxIcon,
+  ExternalLinkIcon,
+  PencilIcon,
+  HighlighterIcon,
+  ChatBubbleIcon,
+  DocxPreviewIllustration,
+  PdfPreviewIllustration,
+} from '../../components/Icons';
 
 interface DocViewerProps {
   title: string;
@@ -27,7 +38,15 @@ export const DocViewer: React.FC<DocViewerProps> = ({ title, kind, onOpenExterna
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '20px' }}>{isWord ? '📘' : isPpt ? '📙' : '📕'}</span>
+          <div className="flex-shrink-0 flex items-center">
+            {isWord ? (
+              <DocxIcon size={24} />
+            ) : isPpt ? (
+              <PptxIcon size={24} />
+            ) : (
+              <PdfIcon size={24} />
+            )}
+          </div>
           <div>
             <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--c-text, #1f2433)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>{title}</span>
@@ -59,13 +78,19 @@ export const DocViewer: React.FC<DocViewerProps> = ({ title, kind, onOpenExterna
               }}
             >
               <span>在 {isWord ? 'WPS / Word' : 'Keynote / PPT'} 中编辑</span>
-              <span>↗</span>
+              <ExternalLinkIcon size={13} />
             </button>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button className="btn btn--sm">🖊 画笔</button>
-              <button className="btn btn--sm btn--warn">🖍 高亮</button>
-              <button className="btn btn--sm">💬 批注便签</button>
+              <button className="btn btn--sm flex items-center gap-1.5">
+                <PencilIcon size={13} /> 画笔
+              </button>
+              <button className="btn btn--sm btn--warn flex items-center gap-1.5">
+                <HighlighterIcon size={13} /> 高亮
+              </button>
+              <button className="btn btn--sm flex items-center gap-1.5">
+                <ChatBubbleIcon size={13} /> 批注便签
+              </button>
             </div>
           )}
         </div>
@@ -84,7 +109,15 @@ export const DocViewer: React.FC<DocViewerProps> = ({ title, kind, onOpenExterna
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', textAlign: 'center' }}>
-            <div style={{ fontSize: '56px', marginBottom: '16px' }}>{isWord ? '📄' : isPpt ? '📊' : '📑'}</div>
+            <div style={{ marginBottom: '20px' }}>
+              {isWord ? (
+                <DocxPreviewIllustration size={72} />
+              ) : isPpt ? (
+                <PptxIcon size={64} />
+              ) : (
+                <PdfPreviewIllustration size={72} />
+              )}
+            </div>
             <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--c-text, #1f2433)', marginBottom: '8px' }}>
               {isWord ? 'DOCX 文档只读预览' : isPpt ? 'PPTX 幻灯片浏览' : 'PDF 矢量文档预览'}
             </h3>
@@ -94,10 +127,11 @@ export const DocViewer: React.FC<DocViewerProps> = ({ title, kind, onOpenExterna
             {!isPdf && (
               <button
                 onClick={onOpenExternal}
-                className="btn btn--sm"
+                className="btn btn--sm flex items-center gap-2"
                 style={{ padding: '8px 16px', borderRadius: '8px' }}
               >
-                打开本机默认程序进行编辑 ↗
+                <span>打开本机默认程序进行编辑</span>
+                <ExternalLinkIcon size={13} />
               </button>
             )}
           </div>

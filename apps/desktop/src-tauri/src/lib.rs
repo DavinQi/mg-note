@@ -4,7 +4,10 @@ pub mod keychain;
 pub mod models;
 pub mod storage;
 
-use tauri::Emitter;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::{Emitter, Manager};
+
+pub static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_os = "macos")]
 fn setup_macos_dock_icon() {
@@ -31,7 +34,8 @@ fn setup_macos_dock_icon() {
                 if dock_tile != nil {
                     let _: () = msg_send![dock_tile, display];
                 }
-                eprintln!("[DockIcon] Successfully set ApplicationIconImage and refreshed dockTile on NSApp");
+                let _: () = msg_send![app, activateIgnoringOtherApps: true];
+                eprintln!("[DockIcon] Successfully set ApplicationIconImage, dockTile and activated NSApp");
             } else {
                 eprintln!("[DockIcon] ns_image was nil");
             }
@@ -44,15 +48,25 @@ fn setup_macos_dock_icon() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
-        .setup(|_app| {
+        .setup(|app| {
             #[cfg(target_os = "macos")]
             setup_macos_dock_icon();
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.emit("exit-requested", ());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
             commands::update_settings,
@@ -77,6 +91,10 @@ pub fn run() {
             commands::set_repository_remote,
             commands::get_repository_remote,
             commands::import_file_bytes,
+            commands::import_local_files,
+            commands::import_local_folder,
+            commands::read_file_bytes,
+            commands::save_file_bytes,
             commands::check_git_environment,
             commands::install_git_environment,
             commands::list_repository_branches,
@@ -93,9 +111,21 @@ pub fn run() {
                 setup_macos_dock_icon();
             }
             tauri::RunEvent::ExitRequested { api, .. } => {
+                if ALLOW_EXIT.load(Ordering::SeqCst) {
+                    return;
+                }
                 // Intercept exit to let UI show Quit-Sync sheet
                 api.prevent_exit();
                 let _ = app_handle.emit("exit-requested", ());
+            }
+            tauri::RunEvent::Reopen { .. } => {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+                #[cfg(target_os = "macos")]
+                setup_macos_dock_icon();
             }
             _ => {}
         }

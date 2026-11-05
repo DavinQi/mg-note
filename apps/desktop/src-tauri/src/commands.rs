@@ -7,8 +7,8 @@ use crate::git_ops::{
 };
 use crate::keychain::{delete_token, get_token, save_token};
 use crate::models::{
-    GitBranchItem, GitEnvironmentStatus, NoteFileItem, SavedCredential, Settings, SyncPreview,
-    SyncStatus,
+    GitBranchItem, GitEnvironmentStatus, ImportFilesResult, ImportFolderResult, NoteFileItem,
+    SavedCredential, Settings, SyncPreview, SyncStatus,
 };
 use crate::storage::{
     forget_saved_credential, get_repos_dir, load_saved_credentials, load_settings, open_external,
@@ -223,8 +223,8 @@ pub fn create_new_folder(
         return Err("文件夹名称无效".into());
     }
     let parent_path = validate_relative_path(parent_folder.as_deref().unwrap_or(""), true)?;
-    if parent_path.components().count() > 1 {
-        return Err("目前最多支持两级文件夹".into());
+    if parent_path.components().count() > 10 {
+        return Err("文件夹层级最多支持10级".into());
     }
     let parent_dir = base_dir.join(parent_path);
     if !parent_dir.is_dir() {
@@ -269,8 +269,8 @@ pub fn move_notebook_item(
     if !source.exists() {
         return Err("要移动的文件或文件夹不存在".into());
     }
-    if destination_rel.components().count() > 2 {
-        return Err("目前最多支持两级文件夹".into());
+    if destination_rel.components().count() > 10 {
+        return Err("文件夹层级最多支持10级".into());
     }
 
     let name = source.file_name().ok_or_else(|| "源路径无效".to_string())?;
@@ -287,8 +287,8 @@ pub fn move_notebook_item(
 
     if source.is_dir() {
         let new_depth = destination_rel.components().count() + 1 + max_child_folder_depth(&source)?;
-        if new_depth > 2 {
-            return Err("移动后会超过两级文件夹限制".into());
+        if new_depth > 10 {
+            return Err("移动后会超过10级文件夹限制".into());
         }
     }
 
@@ -509,6 +509,35 @@ pub fn get_repository_remote(repo_name: String) -> Result<Option<String>, String
 }
 
 #[tauri::command]
+pub fn read_file_bytes(repo_name: String, rel_path: String) -> Result<Vec<u8>, String> {
+    let (_root, file_path) = notebook_paths(&repo_name, &rel_path)?;
+    if !file_path.exists() {
+        return Err("文档不存在".into());
+    }
+    fs::read(&file_path).map_err(|e| format!("读取文件失败：{e}"))
+}
+
+#[tauri::command]
+pub fn save_file_bytes(
+    repo_name: String,
+    rel_path: String,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
+    let (root, file_path) = notebook_paths(&repo_name, &rel_path)?;
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        ensure_folder_metadata(parent, &root);
+    }
+    let temp_file = file_path.with_file_name(format!(".mg-node-{}.tmp", ulid::Ulid::new()));
+    fs::write(&temp_file, &bytes).map_err(|e| format!("写入临时文件失败：{e}"))?;
+    if let Err(error) = fs::rename(&temp_file, &file_path) {
+        let _ = fs::remove_file(&temp_file);
+        return Err(format!("重命名文档失败：{error}"));
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn import_file_bytes(
     repo_name: String,
     rel_path: String,
@@ -523,6 +552,262 @@ pub fn import_file_bytes(
 }
 
 #[tauri::command]
+pub fn import_local_files(
+    repo_name: String,
+    source_paths: Vec<String>,
+    target_folder: String,
+) -> Result<ImportFilesResult, String> {
+    let base_dir = notebook_root(&repo_name)?;
+    let target_path = validate_relative_path(&target_folder, true)?;
+    let dest_dir = base_dir.join(&target_path);
+    if !dest_dir.exists() {
+        fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+    }
+    ensure_folder_metadata(&dest_dir, &base_dir);
+
+    let mut success_count = 0;
+    let mut imported_files = Vec::new();
+    let mut errors = Vec::new();
+
+    for src_str in &source_paths {
+        let src = Path::new(src_str);
+        if !src.exists() || !src.is_file() {
+            errors.push(format!("源文件不存在或不是文件：{}", src_str));
+            continue;
+        }
+
+        let file_name = match src.file_name() {
+            Some(name) => name.to_string_lossy().to_string(),
+            None => {
+                errors.push(format!("无法解析文件名：{}", src_str));
+                continue;
+            }
+        };
+
+        if file_name.starts_with('.') || file_name == "_folder.json" {
+            continue;
+        }
+
+        let mut final_name = file_name.clone();
+        let file_stem = Path::new(&file_name)
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        let file_ext = Path::new(&file_name)
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()))
+            .unwrap_or_default();
+
+        let mut counter = 1;
+        while dest_dir.join(&final_name).exists() {
+            final_name = format!("{} ({}){}", file_stem, counter, file_ext);
+            counter += 1;
+        }
+
+        let dest_file = dest_dir.join(&final_name);
+        match fs::copy(src, &dest_file) {
+            Ok(_) => {
+                let rel_file = if target_folder.is_empty() {
+                    final_name
+                } else {
+                    format!("{}/{}", target_folder, final_name)
+                };
+                imported_files.push(rel_file);
+                success_count += 1;
+            }
+            Err(e) => {
+                errors.push(format!("复制文件 {} 失败：{}", file_name, e));
+            }
+        }
+    }
+
+    Ok(ImportFilesResult {
+        success_count,
+        total_count: source_paths.len(),
+        imported_files,
+        errors,
+    })
+}
+
+#[tauri::command]
+pub fn import_local_folder(
+    repo_name: String,
+    source_folder_path: String,
+    target_folder: String,
+) -> Result<ImportFolderResult, String> {
+    let base_dir = notebook_root(&repo_name)?;
+    let target_path = validate_relative_path(&target_folder, true)?;
+    let parent_dest_dir = base_dir.join(&target_path);
+    if !parent_dest_dir.exists() {
+        fs::create_dir_all(&parent_dest_dir).map_err(|e| e.to_string())?;
+    }
+    ensure_folder_metadata(&parent_dest_dir, &base_dir);
+
+    let src_dir = Path::new(&source_folder_path);
+    if !src_dir.exists() || !src_dir.is_dir() {
+        return Err("指定的源路径不存在或不是文件夹".into());
+    }
+
+    let folder_name = match src_dir.file_name() {
+        Some(name) => name.to_string_lossy().to_string(),
+        None => return Err("无法获取源文件夹名称".into()),
+    };
+
+    if folder_name.starts_with('.') {
+        return Err("不能导入以点开头的隐藏文件夹".into());
+    }
+
+    let mut final_folder_name = folder_name.clone();
+    let mut counter = 1;
+    while parent_dest_dir.join(&final_folder_name).exists() {
+        final_folder_name = format!("{} ({})", folder_name, counter);
+        counter += 1;
+    }
+
+    let dest_folder = parent_dest_dir.join(&final_folder_name);
+    fs::create_dir_all(&dest_folder).map_err(|e| format!("创建目标文件夹失败: {}", e))?;
+
+    let meta_file = dest_folder.join("_folder.json");
+    let meta = serde_json::json!({
+        "name": final_folder_name,
+        "created": chrono::Local::now().to_rfc3339(),
+        "order": []
+    });
+    let _ = fs::write(meta_file, meta.to_string());
+
+    let mut file_count = 0;
+    let mut folder_count = 1;
+
+    fn copy_folder_recursive(
+        src: &Path,
+        dst: &Path,
+        base_root: &Path,
+        file_count: &mut usize,
+        folder_count: &mut usize,
+    ) -> Result<(), String> {
+        let entries = match fs::read_dir(src) {
+            Ok(e) => e,
+            Err(err) => return Err(format!("读取文件夹失败: {err}")),
+        };
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+            let name = entry_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+
+            if name.starts_with('.') || name == "node_modules" || name == "target" || name == ".git" {
+                continue;
+            }
+
+            if entry_path.is_dir() {
+                let sub_dst = dst.join(&name);
+                fs::create_dir_all(&sub_dst).map_err(|e| e.to_string())?;
+                ensure_folder_metadata(&sub_dst, base_root);
+                *folder_count += 1;
+                copy_folder_recursive(&entry_path, &sub_dst, base_root, file_count, folder_count)?;
+            } else if entry_path.is_file() {
+                let sub_dst = dst.join(&name);
+                if fs::copy(&entry_path, &sub_dst).is_ok() {
+                    *file_count += 1;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    copy_folder_recursive(&src_dir, &dest_folder, &base_dir, &mut file_count, &mut folder_count)?;
+
+    let rel_path = if target_folder.is_empty() {
+        final_folder_name.clone()
+    } else {
+        format!("{}/{}", target_folder, final_folder_name)
+    };
+
+    Ok(ImportFolderResult {
+        folder_name: final_folder_name,
+        rel_path,
+        file_count,
+        folder_count,
+    })
+}
+
+#[tauri::command]
 pub fn exit_app(app: AppHandle) {
+    crate::ALLOW_EXIT.store(true, std::sync::atomic::Ordering::SeqCst);
     app.exit(0);
+    std::process::exit(0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_import_local_files_and_collision() {
+        let temp_test_dir = std::env::temp_dir().join(format!("mg_test_import_{}", ulid::Ulid::new()));
+        let _ = fs::create_dir_all(&temp_test_dir);
+        let repo_dir = get_repos_dir().join("test_import_repo");
+        let _ = fs::remove_dir_all(&repo_dir);
+        let notebook_dir = repo_dir.join("notebooks");
+        fs::create_dir_all(&notebook_dir).expect("create notebooks");
+
+        let src_file1 = temp_test_dir.join("demo.md");
+        fs::write(&src_file1, "# Hello World").expect("write src");
+
+        let res = import_local_files(
+            "test_import_repo".into(),
+            vec![src_file1.to_string_lossy().to_string()],
+            "subfolder".into(),
+        ).expect("import files");
+
+        assert_eq!(res.success_count, 1);
+        assert_eq!(res.imported_files[0], "subfolder/demo.md");
+        assert!(notebook_dir.join("subfolder/demo.md").exists());
+        assert!(notebook_dir.join("subfolder/_folder.json").exists());
+
+        // Import again to test collision
+        let res2 = import_local_files(
+            "test_import_repo".into(),
+            vec![src_file1.to_string_lossy().to_string()],
+            "subfolder".into(),
+        ).expect("import collision");
+
+        assert_eq!(res2.success_count, 1);
+        assert_eq!(res2.imported_files[0], "subfolder/demo (1).md");
+        assert!(notebook_dir.join("subfolder/demo (1).md").exists());
+
+        let _ = fs::remove_dir_all(&repo_dir);
+        let _ = fs::remove_dir_all(&temp_test_dir);
+    }
+
+    #[test]
+    fn test_import_local_folder_recursive() {
+        let temp_test_dir = std::env::temp_dir().join(format!("mg_test_folder_{}", ulid::Ulid::new()));
+        let _ = fs::create_dir_all(&temp_test_dir);
+        let repo_dir = get_repos_dir().join("test_import_folder_repo");
+        let _ = fs::remove_dir_all(&repo_dir);
+        let notebook_dir = repo_dir.join("notebooks");
+        fs::create_dir_all(&notebook_dir).expect("create notebooks");
+
+        let src_folder = temp_test_dir.join("MyNotes");
+        let sub_folder = src_folder.join("Nested");
+        fs::create_dir_all(&sub_folder).expect("create sub_folder");
+        fs::write(src_folder.join("root_note.md"), "Root note content").expect("write note");
+        fs::write(sub_folder.join("nested_note.txt"), "Nested note content").expect("write txt");
+
+        let res = import_local_folder(
+            "test_import_folder_repo".into(),
+            src_folder.to_string_lossy().to_string(),
+            "".into(),
+        ).expect("import folder");
+
+        assert_eq!(res.folder_name, "MyNotes");
+        assert_eq!(res.file_count, 2);
+        assert!(notebook_dir.join("MyNotes/root_note.md").exists());
+        assert!(notebook_dir.join("MyNotes/Nested/nested_note.txt").exists());
+        assert!(notebook_dir.join("MyNotes/_folder.json").exists());
+        assert!(notebook_dir.join("MyNotes/Nested/_folder.json").exists());
+
+        let _ = fs::remove_dir_all(&repo_dir);
+        let _ = fs::remove_dir_all(&temp_test_dir);
+    }
 }

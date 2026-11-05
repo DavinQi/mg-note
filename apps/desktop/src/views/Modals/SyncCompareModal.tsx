@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import {
+  GitBranchIcon,
+  AlertTriangleIcon,
+  LinkIcon,
+  LockClosedIcon,
+  FolderIcon,
+} from '../../components/Icons';
 
 export interface SyncFileChange {
   path: string;
@@ -230,7 +237,7 @@ export const SyncCompareModal: React.FC<SyncCompareModalProps> = ({
             <h3 id="sync-compare-title" className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 flex-wrap">
               同步前文件比较
               <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center gap-1">
-                <span>🌿</span> 分支: {preview.branch || 'my-git-note'}
+                <GitBranchIcon size={11} /> 分支: {preview.branch || 'my-git-note'}
               </span>
               {preview.hasOrigin ? (
                 <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -261,7 +268,7 @@ export const SyncCompareModal: React.FC<SyncCompareModalProps> = ({
         {!preview.hasOrigin && (
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-200">
-              <span>⚠️</span> 此仓库尚未关联云端 Git 仓库（GitHub / Gitee）
+              <AlertTriangleIcon size={14} className="text-amber-600" /> 此仓库尚未关联云端 Git 仓库（GitHub / Gitee）
             </div>
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
               编辑的文件当前仅保存在本机，尚未同步到云端。你可以直接在 {provider} 创建对应私有仓库，或关联已有远程地址：
@@ -278,9 +285,9 @@ export const SyncCompareModal: React.FC<SyncCompareModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowBindInput((prev) => !prev)}
-                className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-100 hover:bg-amber-100/50 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-100 hover:bg-amber-100/50 cursor-pointer flex items-center gap-1.5"
               >
-                🔗 关联已有 Git 远程地址…
+                <LinkIcon size={12} /> 关联已有 Git 远程地址…
               </button>
             </div>
 
@@ -336,7 +343,8 @@ export const SyncCompareModal: React.FC<SyncCompareModalProps> = ({
         {isPermissionError && (
           <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50/90 p-4 dark:border-rose-900/60 dark:bg-rose-950/30 text-xs">
             <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-200">
-              <span>🔒</span> Git 权限校验未通过 (权限引导)
+              <LockClosedIcon size={14} className="text-rose-600" />
+              <span>Git 权限校验未通过 (权限引导)</span>
             </div>
             <p className="mt-1.5 text-rose-700 dark:text-rose-300 leading-relaxed">
               无法推送到远程私有仓库。这通常是因为 macOS 钥匙串中缺少有效密钥，或 Token 未勾选 <code>repo</code>（完整仓库读写）权限。
@@ -385,7 +393,8 @@ export const SyncCompareModal: React.FC<SyncCompareModalProps> = ({
         {isNotFoundError && (
           <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/90 p-4 dark:border-sky-900/60 dark:bg-sky-950/30 text-xs">
             <div className="flex items-center gap-2 font-bold text-sky-800 dark:text-sky-200">
-              <span>📁</span> 远程未找到对应仓库或文件夹
+              <FolderIcon size={14} className="text-sky-600" />
+              <span>远程未找到对应仓库或文件夹</span>
             </div>
             <p className="mt-1.5 text-sky-700 dark:text-sky-300 leading-relaxed">
               在 {provider} 上未找到名称为「{repoName}」的私有仓库。你可以直接在官方网页创建并重试：

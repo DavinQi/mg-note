@@ -4,6 +4,13 @@ import { useSettings } from '../context/SettingsContext';
 import { Avatar } from '../components/Avatar';
 import { CustomizePanel } from '../components/CustomizePanel';
 import { AppLogo } from '../components/AppLogo';
+import {
+  PaletteIcon,
+  KeyIcon,
+  LockClosedIcon,
+  AlertTriangleIcon,
+  SyncIcon,
+} from '../components/Icons';
 
 interface LoginViewProps {
   onLoginSuccess: (provider: string, user: string, token?: string, repos?: any[]) => void;
@@ -471,7 +478,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 }}
               >
                 {currentArt.name}
-                {settings.carousel === 'pin' && ' · 📌 固定'}
+                {settings.carousel === 'pin' && ' · 固定'}
               </span>
             </div>
           </div>
@@ -513,7 +520,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
           >
-            <span style={{ color: 'var(--accent-600)' }}>🎨</span> 个性化
+            <PaletteIcon size={13} className="text-pink-500" />
+            <span>个性化</span>
           </button>
 
           {/* Greeting */}
@@ -730,12 +738,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     style={{
                       position: 'absolute',
                       left: '12px',
-                      top: '9px',
+                      top: '11px',
                       color: 'var(--c-muted)',
-                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
                     }}
                   >
-                    🔑
+                    <KeyIcon size={14} />
                   </span>
                   <input
                     type="password"
@@ -763,7 +772,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                       gap: '4px',
                     }}
                   >
-                    <span>🔒</span> 令牌将安全加密保存在 macOS 钥匙串中
+                    <LockClosedIcon size={11} className="text-slate-400" />
+                    <span>令牌将安全加密保存在 macOS 钥匙串中</span>
                   </p>
                   <a
                     href={tokenPageUrl}
@@ -793,9 +803,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   border: '1px solid #fecaca',
                   color: '#dc2626',
                   fontSize: '11px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                ⚠ {errorMessage}
+                <AlertTriangleIcon size={13} className="text-red-500 flex-shrink-0" />
+                <span>{errorMessage}</span>
               </div>
             )}
           </div>
@@ -912,7 +926,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           >
             {loading ? (
               <>
-                <span className="inline-block animate-spin">◌</span> 正在验证 {provider} 并拉取真实仓库…
+                <SyncIcon size={14} className="animate-spin" /> 正在验证 {provider} 并拉取真实仓库…
               </>
             ) : tokenInput.trim() ? (
               `连接 ${provider} 并继续 ➔`
@@ -921,6 +935,32 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             ) : (
               `连接 ${provider} 并继续 ➔`
             )}
+          </button>
+
+          {/* Direct Local Workspace Entry (Frictionless / Local-First) */}
+          <button
+            type="button"
+            onClick={() => onLoginSuccess('local', settings.nickname || 'Alex')}
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              marginTop: '10px',
+              borderRadius: '10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--c-text-2, #555b6e)',
+              border: '1px solid var(--c-line-strong, #dfe2ea)',
+              background: 'transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>直接体验本地工作台 (免密 / 离线模式)</span>
+            <span>→</span>
           </button>
 
           <p

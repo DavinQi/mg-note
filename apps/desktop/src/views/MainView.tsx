@@ -4,6 +4,7 @@ import { Titlebar } from '../components/Titlebar';
 import { PersonalMenu } from '../components/PersonalMenu';
 import { MarkdownEditor } from './Editor/MarkdownEditor';
 import { DocxEditor } from './Editor/DocxEditor';
+import { docxBytesToHtml, htmlToDocxBytes } from '../utils/docxUtils';
 import { DocViewer } from './DocViewer/DocViewer';
 import { NewFolderModal } from './Modals/NewFolderModal';
 import { NewNoteModal } from './Modals/NewNoteModal';
@@ -12,6 +13,23 @@ import { NotebookTree, DraggedItem, setGlobalDraggedItem } from './NotebookTree'
 import { SyncCompareModal, SyncPreview } from './Modals/SyncCompareModal';
 import { BranchSwitchModal } from './Modals/BranchSwitchModal';
 import { AiAssistantDrawer, CartoonAiIcon } from './AI/AiAssistantDrawer';
+import {
+  PlusIcon,
+  SyncIcon,
+  ChevronDownIcon,
+  GitBranchIcon,
+  SparklesIcon,
+  NoteFormatIcon,
+  FolderIcon,
+  FolderPlusIcon,
+  FileImportIcon,
+  FolderImportIcon,
+  EmptyFolderIllustration,
+  SearchIcon,
+  ExternalLinkIcon,
+  CheckIcon,
+  AlertTriangleIcon,
+} from '../components/Icons';
 
 interface ContextMenuState {
   x: number;
@@ -90,7 +108,7 @@ export const MainView: React.FC<MainViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [currentBranch, setCurrentBranch] = useState<string>('my-git-note');
   const [showBranchModal, setShowBranchModal] = useState(false);
-  const [syncStatusText, setSyncStatusText] = useState('✓ 已同步 · 刚刚');
+  const [syncStatusText, setSyncStatusText] = useState('已同步 · 刚刚');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -175,7 +193,8 @@ export const MainView: React.FC<MainViewProps> = ({
     const queuedSave = noteSaveQueueRef.current.catch(() => undefined).then(async () => {
       const { invoke } = await import('@tauri-apps/api/core');
       if (note.kind === 'docx') {
-        await invoke('save_docx_html', { repoName, relPath: note.path, html: content });
+        const bytes = await htmlToDocxBytes(content);
+        await invoke('save_file_bytes', { repoName, relPath: note.path, bytes });
       } else {
         await invoke('save_note_content', { repoName, relPath: note.path, content });
       }
@@ -201,12 +220,33 @@ export const MainView: React.FC<MainViewProps> = ({
     const loadContent = async () => {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        const command = selectedNote.kind === 'docx' ? 'read_docx_html' : 'read_note_content';
-        const content: string = await invoke(command, {
-          repoName,
-          relPath: selectedNote.path,
-        });
-        if (!cancelled) setActiveContent(content || '');
+        if (selectedNote.kind === 'docx') {
+          try {
+            const bytes: number[] = await invoke('read_file_bytes', {
+              repoName,
+              relPath: selectedNote.path,
+            });
+            const html = await docxBytesToHtml(bytes);
+            if (!cancelled) setActiveContent(html || '<p><br></p>');
+          } catch (docxErr) {
+            // Fallback for legacy textutil docx or empty docx
+            try {
+              const fallbackHtml: string = await invoke('read_docx_html', {
+                repoName,
+                relPath: selectedNote.path,
+              });
+              if (!cancelled) setActiveContent(fallbackHtml || '<p><br></p>');
+            } catch {
+              throw docxErr;
+            }
+          }
+        } else {
+          const content: string = await invoke('read_note_content', {
+            repoName,
+            relPath: selectedNote.path,
+          });
+          if (!cancelled) setActiveContent(content || (selectedNote.kind === 'html' ? '<p><br></p>' : ''));
+        }
       } catch (error) {
         if (!cancelled) {
           setDocumentLoadError(error instanceof Error ? error.message : String(error));
@@ -259,9 +299,9 @@ export const MainView: React.FC<MainViewProps> = ({
     const branchName = status.branch || currentBranch || 'my-git-note';
     setCurrentBranch(branchName);
     if (!status.hasOrigin) {
-      setSyncStatusText(`⚠ 本地已提交 [${branchName}] (未关联远程) · ${timeStr}`);
+      setSyncStatusText(`本地已提交 [${branchName}] (未关联远程) · ${timeStr}`);
     } else {
-      setSyncStatusText(`✓ 已同步 [${branchName}] · ${timeStr}`);
+      setSyncStatusText(`已同步 [${branchName}] · ${timeStr}`);
     }
     await refreshNotesFromDisk();
   }, [currentBranch, provider, refreshNotesFromDisk, repoName, saveCurrentDocument, username]);
@@ -288,14 +328,14 @@ export const MainView: React.FC<MainViewProps> = ({
   const handleSync = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    setSyncStatusText('⟳ 正在同步到 Git…');
+    setSyncStatusText('正在同步到 Git…');
 
     try {
       await syncRepository();
       setSyncPreview(null);
     } catch (error) {
       const errStr = error instanceof Error ? error.message : String(error);
-      setSyncStatusText(`⚠ 同步失败 · ${errStr}`);
+      setSyncStatusText(`同步失败 · ${errStr}`);
       // Open compare modal with preview so user can resolve conflict or bind remote/token
       try {
         const { invoke } = await import('@tauri-apps/api/core');
@@ -313,16 +353,16 @@ export const MainView: React.FC<MainViewProps> = ({
   const handleOpenPreview = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    setSyncStatusText('⟳ 正在比较文件…');
+    setSyncStatusText('正在比较文件…');
     try {
       await saveCurrentDocument();
       const { invoke } = await import('@tauri-apps/api/core');
       const preview: SyncPreview = await invoke('preview_git_sync', { repoName, provider, username });
       setSyncPreview(preview);
-      const originNotice = preview.hasOrigin ? '' : ' · ⚠️ 尚未关联远程';
-      setSyncStatusText(`✓ 比较完成 · 本地 ${preview.localChanges.length} 项 / 远程 ${preview.remoteChanges.length} 项${originNotice}`);
+      const originNotice = preview.hasOrigin ? '' : ' · 尚未关联远程';
+      setSyncStatusText(`比较完成 · 本地 ${preview.localChanges.length} 项 / 远程 ${preview.remoteChanges.length} 项${originNotice}`);
     } catch (error) {
-      setSyncStatusText(`⚠ 比较失败 · ${error instanceof Error ? error.message : String(error)}`);
+      setSyncStatusText(`比较失败 · ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsSyncing(false);
     }
@@ -331,12 +371,12 @@ export const MainView: React.FC<MainViewProps> = ({
   const handleConfirmSync = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    setSyncStatusText('⟳ 同步中…');
+    setSyncStatusText('同步中…');
     try {
       await syncRepository();
       setSyncPreview(null);
     } catch (error) {
-      setSyncStatusText(`⚠ 同步失败 · ${error instanceof Error ? error.message : String(error)}`);
+      setSyncStatusText(`同步失败 · ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     } finally {
       setIsSyncing(false);
@@ -451,7 +491,8 @@ export const MainView: React.FC<MainViewProps> = ({
       }
       const initialDocHtml = body || `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>${escapeHtml(title)}</h1><p>在此开始记录你的思考，支持类似 Word 的排版与直接粘贴外部富文本原格式...</p></body></html>`;
       if (kind === 'docx') {
-        await invoke('save_docx_html', { repoName, relPath, html: initialDocHtml });
+        const bytes = await htmlToDocxBytes(initialDocHtml);
+        await invoke('save_file_bytes', { repoName, relPath, bytes });
       } else {
         await invoke('save_note_content', { repoName, relPath, content: kind === 'html' ? initialDocHtml : body });
       }
@@ -473,7 +514,7 @@ export const MainView: React.FC<MainViewProps> = ({
     try {
       await saveNoteToDisk(selectedNote, updatedContent);
     } catch (error) {
-      setSyncStatusText(`⚠ 保存失败 · ${error instanceof Error ? error.message : String(error)}`);
+      setSyncStatusText(`保存失败 · ${error instanceof Error ? error.message : String(error)}`);
       if (selectedNote.kind === 'docx') throw error;
     }
   };
@@ -482,7 +523,7 @@ export const MainView: React.FC<MainViewProps> = ({
     const currentParent = parentFolderOf(sourcePath);
     if (currentParent === destinationFolder) {
       const itemName = sourcePath.split('/').pop() || sourcePath;
-      setSyncStatusText(`ℹ️ 「${itemName}」已在「${destinationFolder ? destinationFolder.split('/').join(' / ') : '根目录'}」中`);
+      setSyncStatusText(`「${itemName}」已在「${destinationFolder ? destinationFolder.split('/').join(' / ') : '根目录'}」中`);
       return;
     }
 
@@ -511,7 +552,7 @@ export const MainView: React.FC<MainViewProps> = ({
 
     await refreshNotesFromDisk();
     const itemName = sourcePath.split('/').pop() || sourcePath;
-    setSyncStatusText(`✓ 已成功将「${itemName}」移入「${destinationFolder ? destinationFolder.split('/').join(' / ') : '根目录'}」`);
+    setSyncStatusText(`已成功将「${itemName}」移入「${destinationFolder ? destinationFolder.split('/').join(' / ') : '根目录'}」`);
   };
 
   const handleMoveItem = async (destinationFolder: string) => {
@@ -524,7 +565,7 @@ export const MainView: React.FC<MainViewProps> = ({
     try {
       await moveItemToFolder(sourcePath, isFolder, targetFolder);
     } catch (error) {
-      setSyncStatusText(`⚠ 移动失败 · ${error instanceof Error ? error.message : String(error)}`);
+      setSyncStatusText(`移动失败 · ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -536,7 +577,7 @@ export const MainView: React.FC<MainViewProps> = ({
       const file = files[i];
       const name = file.name;
       const ext = name.split('.').pop()?.toLowerCase();
-      if (!ext || !['md', 'txt', 'html', 'docx'].includes(ext)) {
+      if (!ext || !['md', 'markdown', 'txt', 'html', 'htm', 'docx', 'pptx', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
         continue;
       }
 
@@ -558,7 +599,103 @@ export const MainView: React.FC<MainViewProps> = ({
     if (importedCount > 0) {
       await refreshNotesFromDisk();
       setActiveCategory(destinationFolder);
-      setSyncStatusText(`✓ 已导入 ${importedCount} 个文件到「${destinationFolder ? destinationFolder.split('/').join(' / ') : '根目录'}」`);
+      setSyncStatusText(`已导入 ${importedCount} 个文件到「${destinationFolder ? destinationFolder.split('/').join(' / ') : '根目录'}」`);
+    }
+  };
+
+  // Open native file picker to import local files
+  const handleImportLocalFiles = async (targetFolder = activeCategory) => {
+    setShowNewMenu(false);
+    setContextMenu(null);
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        multiple: true,
+        title: `导入文件到「${targetFolder ? targetFolder.split('/').join(' / ') : '根目录'}」`,
+        filters: [
+          {
+            name: '支持的笔记及文档',
+            extensions: ['docx', 'md', 'markdown', 'txt', 'html', 'htm', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'],
+          },
+          { name: '所有文件', extensions: ['*'] },
+        ],
+      });
+
+      if (!selected) return;
+
+      const filePaths: string[] = Array.isArray(selected) ? selected : [selected];
+      if (filePaths.length === 0) return;
+
+      const { invoke } = await import('@tauri-apps/api/core');
+      const result = await invoke<{
+        successCount: number;
+        totalCount: number;
+        importedFiles: string[];
+        errors: string[];
+      }>('import_local_files', {
+        repoName,
+        sourcePaths: filePaths,
+        targetFolder,
+      });
+
+      if (result.successCount > 0) {
+        await refreshNotesFromDisk();
+        setActiveCategory(targetFolder);
+        setSyncStatusText(`已成功导入 ${result.successCount} 个文件到「${targetFolder ? targetFolder.split('/').join(' / ') : '根目录'}」`);
+        if (result.importedFiles.length > 0) {
+          const firstPath = result.importedFiles[0];
+          setSelectedNoteId(firstPath);
+        }
+      }
+      if (result.errors.length > 0) {
+        console.warn('Import files with errors:', result.errors);
+      }
+    } catch (err) {
+      console.error('Failed to import local files:', err);
+      alert(`导入文件失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Open native directory picker to import local folder recursively
+  const handleImportLocalFolder = async (targetFolder = activeCategory) => {
+    setShowNewMenu(false);
+    setContextMenu(null);
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: `导入文件夹到「${targetFolder ? targetFolder.split('/').join(' / ') : '根目录'}」`,
+      });
+
+      if (!selected || typeof selected !== 'string') return;
+
+      const { invoke } = await import('@tauri-apps/api/core');
+      const result = await invoke<{
+        folderName: string;
+        relPath: string;
+        fileCount: number;
+        folderCount: number;
+      }>('import_local_folder', {
+        repoName,
+        sourceFolderPath: selected,
+        targetFolder,
+      });
+
+      await refreshNotesFromDisk();
+      setActiveCategory(result.relPath);
+      setExpandedFolders((current) => {
+        const next = new Set(current);
+        next.add(result.relPath);
+        if (targetFolder) next.add(targetFolder);
+        return next;
+      });
+      setSyncStatusText(
+        `已成功导入文件夹「${result.folderName}」（包含 ${result.fileCount} 个文件）`
+      );
+    } catch (err) {
+      console.error('Failed to import local folder:', err);
+      alert(`导入文件夹失败：${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -596,11 +733,14 @@ export const MainView: React.FC<MainViewProps> = ({
           title="点击查看本地与远程文件差异与同步详情"
           aria-label="查看同步详情"
         >
-          <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ background: isSyncing ? '#f59e0b' : 'var(--accent-500, #10b981)' }}
-          />
-          {syncStatusText}
+          {isSyncing ? (
+            <SyncIcon size={11} className="animate-spin text-amber-500" />
+          ) : syncStatusText.includes('失败') ? (
+            <AlertTriangleIcon size={11} className="text-amber-500" />
+          ) : (
+            <CheckIcon size={11} className="text-emerald-500" />
+          )}
+          <span>{syncStatusText}</span>
         </button>
 
         {/* Branch Quick Switch Pill */}
@@ -611,50 +751,95 @@ export const MainView: React.FC<MainViewProps> = ({
           title="点击查看或切换 Git 分支"
           aria-label="切换 Git 分支"
         >
-          <span>🌿</span>
+          <GitBranchIcon size={12} className="text-emerald-600 dark:text-emerald-400" />
           <span className="max-w-[120px] truncate font-medium">{currentBranch}</span>
         </button>
 
         {/* ＋ 新建 Dropdown */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setShowNewMenu((prev) => !prev)}
-            className="btn btn--primary btn--sm"
-            style={{
-              background: 'var(--accent-600, #059669)',
-              borderColor: 'var(--accent-600, #059669)',
-              color: '#ffffff',
-              fontWeight: 500,
-            }}
+            className={`wb-create-btn ${showNewMenu ? 'is-open' : ''}`}
+            title="新建文件/文件夹，或导入外部内容"
+            aria-label="新建或导入"
           >
-            <span>＋ 新建</span>
-            <span style={{ fontSize: '10px' }}>▾</span>
+            <span className="wb-create-plus" aria-hidden="true">
+              <PlusIcon size={13} />
+            </span>
+            <span>新建</span>
+            <span className="wb-create-arrow" aria-hidden="true">
+              <ChevronDownIcon size={10} />
+            </span>
           </button>
 
           {showNewMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowNewMenu(false)} />
-              <div
-                className="absolute right-0 top-8 w-44 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-1 z-50 text-xs"
-                style={{ background: 'var(--c-surface, #ffffff)' }}
-              >
+              <div className="wb-create-dropdown">
+                {/* 区域 1：新建 */}
+                <div className="wb-create-section-title">新建内容</div>
                 <button
+                  type="button"
                   onClick={() => openNewNote(activeCategory)}
-                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left text-slate-700 dark:text-slate-200 cursor-pointer"
+                  className="wb-create-menu-item"
                 >
-                  <span className="flex items-center gap-2">
-                    <span>📄</span> 新建文件
+                  <span className="flex items-center gap-2.5">
+                    <span className="wb-create-item-icon bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                      <NoteFormatIcon kind="md" size={15} />
+                    </span>
+                    <span className="font-medium">新建笔记</span>
                   </span>
-                  <kbd className="text-[10px] text-slate-400 font-mono">⌘N</kbd>
+                  <span className="wb-create-badge">⌘N</span>
                 </button>
                 <button
-                  onClick={() => openNewFolder(activeCategory.split('/').length === 1 ? activeCategory : '')}
-                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left text-slate-700 dark:text-slate-200 cursor-pointer"
+                  type="button"
+                  onClick={() => openNewFolder(activeCategory)}
+                  className="wb-create-menu-item"
                 >
-                  <span className="flex items-center gap-2">
-                    <span>📁</span> 新建文件夹
+                  <span className="flex items-center gap-2.5">
+                    <span className="wb-create-item-icon bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+                      <FolderPlusIcon size={15} />
+                    </span>
+                    <span className="font-medium">新建文件夹</span>
                   </span>
-                  <kbd className="text-[10px] text-slate-400 font-mono">⌘⇧N</kbd>
+                  <span className="wb-create-badge">⌘⇧N</span>
+                </button>
+
+                {/* 分割线 */}
+                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                {/* 区域 2：导入 */}
+                <div className="wb-create-section-title">外部导入</div>
+                <button
+                  type="button"
+                  onClick={() => void handleImportLocalFiles(activeCategory)}
+                  className="wb-create-menu-item"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="wb-create-item-icon bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                      <FileImportIcon size={15} />
+                    </span>
+                    <div>
+                      <div className="font-medium">导入本地文件…</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">支持 Word/Markdown/文本/图片</div>
+                    </div>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleImportLocalFolder(activeCategory)}
+                  className="wb-create-menu-item"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="wb-create-item-icon bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                      <FolderImportIcon size={15} />
+                    </span>
+                    <div>
+                      <div className="font-medium">导入整个文件夹…</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">完整保留多层级目录结构</div>
+                    </div>
+                  </span>
                 </button>
               </div>
             </>
@@ -676,7 +861,9 @@ export const MainView: React.FC<MainViewProps> = ({
             <CartoonAiIcon size={17} />
           </span>
           <span className="wb-ai-label">AI 助手</span>
-          <span className="wb-ai-sparkle">✨</span>
+          <span className="wb-ai-sparkle text-amber-500">
+            <SparklesIcon size={11} />
+          </span>
         </button>
 
         {/* Manual Sync Button */}
@@ -687,7 +874,7 @@ export const MainView: React.FC<MainViewProps> = ({
           title="保存并提交、推送同步到远程 Git 仓库 (冲突或异常时将弹出比较窗口)"
           aria-label="立即同步到 Git"
         >
-          <span className={isSyncing ? 'animate-spin inline-block' : ''}>⟳</span>
+          <SyncIcon size={13} className={isSyncing ? 'animate-spin' : ''} />
           <span>{isSyncing ? '同步中…' : '同步'}</span>
         </button>
       </Titlebar>
@@ -699,11 +886,11 @@ export const MainView: React.FC<MainViewProps> = ({
           <div className="wb-section-title">
             <span>笔记本分类</span>
             <button
-              onClick={() => openNewFolder(activeCategory.split('/').length === 1 ? activeCategory : '')}
-              className="hover:text-slate-700 text-sm cursor-pointer p-0.5 rounded"
+              onClick={() => openNewFolder(activeCategory)}
+              className="hover:text-slate-700 text-sm cursor-pointer p-0.5 rounded flex items-center"
               title="新建文件夹 (⌘⇧N)"
             >
-              +
+              <PlusIcon size={12} />
             </button>
           </div>
 
@@ -739,9 +926,14 @@ export const MainView: React.FC<MainViewProps> = ({
                     fontSize: '11px',
                     fontWeight: 600,
                     cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
                   }}
                 >
-                  📁 提示：创建第一个笔记文件夹
+                  <FolderPlusIcon size={14} />
+                  <span>创建第一个笔记文件夹</span>
                 </button>
               </div>
             )}
@@ -767,13 +959,14 @@ export const MainView: React.FC<MainViewProps> = ({
         {/* Column 2: Note List */}
         <section className="wb-notelist">
           {/* Search bar */}
-          <div className="wb-search-box">
+          <div className="wb-search-box flex items-center gap-2 px-2.5">
+            <SearchIcon size={13} className="text-slate-400 flex-shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索标题或标签 (⌘⇧P)..."
-              className="wb-search-input"
+              className="wb-search-input flex-1"
             />
           </div>
 
@@ -802,7 +995,9 @@ export const MainView: React.FC<MainViewProps> = ({
               </div>
             ) : visibleNotes.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '36px 14px', fontSize: '12px', color: 'var(--c-muted)' }}>
-                <div style={{ fontSize: '26px', marginBottom: '8px' }}>📂</div>
+                <div className="flex justify-center mb-3">
+                  <EmptyFolderIllustration size={56} />
+                </div>
                 <div style={{ fontWeight: 600, color: 'var(--c-text, #1e293b)', marginBottom: '4px' }}>
                   「{activeCategory ? activeCategory.split('/').join(' / ') : '根目录'}」暂无笔记
                 </div>
@@ -814,16 +1009,30 @@ export const MainView: React.FC<MainViewProps> = ({
                   <button
                     type="button"
                     onClick={() => openNewNote(activeCategory)}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 cursor-pointer shadow-xs"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 cursor-pointer shadow-xs transition-colors flex items-center gap-1.5"
                   >
-                    ＋ 在此新建笔记
+                    <PlusIcon size={11} /> 在此新建笔记
                   </button>
                   <button
                     type="button"
-                    onClick={() => openNewFolder(activeCategory.split('/').length === 1 ? activeCategory : '')}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    onClick={() => openNewFolder(activeCategory)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors flex items-center gap-1.5"
                   >
-                    📁 新建子文件夹
+                    <FolderPlusIcon size={13} /> 新建子文件夹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleImportLocalFiles(activeCategory)}
+                    className="px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-100/60 dark:hover:bg-blue-900/40 cursor-pointer transition-colors flex items-center gap-1.5"
+                  >
+                    <FileImportIcon size={13} /> 导入文件
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleImportLocalFolder(activeCategory)}
+                    className="px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-xs text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-900/40 cursor-pointer transition-colors flex items-center gap-1.5"
+                  >
+                    <FolderImportIcon size={13} /> 导入文件夹
                   </button>
                 </div>
               </div>
@@ -855,7 +1064,10 @@ export const MainView: React.FC<MainViewProps> = ({
                       title={`${n.title} (按住可拖拽移动至左侧任意文件夹)`}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <div className="wb-note-title">{n.title}</div>
+                        <div className="wb-note-title flex items-center gap-1.5 min-w-0">
+                          <NoteFormatIcon kind={n.kind} size={15} className="flex-shrink-0" />
+                          <span className="truncate">{n.title}</span>
+                        </div>
                         {n.public && (
                           <span className="badge badge--public" style={{ margin: 0, flexShrink: 0 }}>
                             公开
@@ -965,32 +1177,33 @@ export const MainView: React.FC<MainViewProps> = ({
           >
             {contextMenu.isFolder || contextMenu.path === '' ? (
               <>
-                <button role="menuitem" onClick={() => openNewNote(contextMenu.path)}>
-                  <span>📄</span> 新建文件
+                <button role="menuitem" onClick={() => openNewNote(contextMenu.path)} className="flex items-center gap-2">
+                  <NoteFormatIcon kind="md" size={14} /> 新建笔记
                 </button>
-                {contextMenu.path === '' ? (
-                  <button role="menuitem" onClick={() => openNewFolder('')}>
-                    <span>📁</span> 新建一级文件夹
-                  </button>
-                ) : contextMenu.path.split('/').length === 1 ? (
-                  <button role="menuitem" onClick={() => openNewFolder(contextMenu.path)}>
-                    <span>📁</span> 新建二级文件夹
-                  </button>
-                ) : (
-                  <button role="menuitem" disabled>
-                    <span>📁</span> 最多两级文件夹
-                  </button>
-                )}
+                <button role="menuitem" onClick={() => openNewFolder(contextMenu.path)} className="flex items-center gap-2">
+                  <FolderPlusIcon size={14} /> {contextMenu.path === '' ? '新建一级文件夹' : '新建子文件夹'}
+                </button>
+                <div className="wb-context-divider" />
+                <button role="menuitem" onClick={() => void handleImportLocalFiles(contextMenu.path)} className="flex items-center gap-2">
+                  <FileImportIcon size={14} /> 导入文件到此…
+                </button>
+                <button role="menuitem" onClick={() => void handleImportLocalFolder(contextMenu.path)} className="flex items-center gap-2">
+                  <FolderImportIcon size={14} /> 导入子文件夹…
+                </button>
                 {contextMenu.path && (
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      setMoveItem({ path: contextMenu.path, isFolder: true });
-                      setContextMenu(null);
-                    }}
-                  >
-                    <span>↪</span> 移动文件夹…
-                  </button>
+                  <>
+                    <div className="wb-context-divider" />
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setMoveItem({ path: contextMenu.path, isFolder: true });
+                        setContextMenu(null);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLinkIcon size={13} /> 移动文件夹…
+                    </button>
+                  </>
                 )}
               </>
             ) : (
@@ -1000,8 +1213,9 @@ export const MainView: React.FC<MainViewProps> = ({
                   setMoveItem({ path: contextMenu.path, isFolder: false });
                   setContextMenu(null);
                 }}
+                className="flex items-center gap-2"
               >
-                <span>↪</span> 移动文件…
+                <ExternalLinkIcon size={13} /> 移动文件…
               </button>
             )}
           </div>
@@ -1039,7 +1253,7 @@ export const MainView: React.FC<MainViewProps> = ({
           onClose={() => setShowBranchModal(false)}
           onBranchSwitched={async (newBranch) => {
             setCurrentBranch(newBranch);
-            setSyncStatusText(`✓ 已切换至分支 [${newBranch}]`);
+            setSyncStatusText(`已切换至分支 [${newBranch}]`);
             await refreshNotesFromDisk();
           }}
         />

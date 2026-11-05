@@ -4,6 +4,7 @@ import taskLists from 'markdown-it-task-lists';
 import hljs from 'highlight.js';
 import { ViewMode } from '../../types/note';
 import { WpsToolbar } from './WpsToolbar';
+import { EyeIcon, PencilIcon, ColumnsIcon } from '../../components/Icons';
 
 interface MarkdownEditorProps {
   initialContent: string;
@@ -163,38 +164,41 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         <div className="flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-medium">
           <button
             onClick={() => setViewMode('preview')}
-            className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === 'preview'
-                ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-slate-100 font-bold'
-                : 'text-slate-500'
+                ? 'bg-white dark:bg-slate-700 shadow-xs text-slate-800 dark:text-slate-100 font-bold'
+                : 'text-slate-500 hover:text-slate-700'
             }`}
             title="预览模式 (⌘1)"
           >
-            <span>👁 预览</span>
+            <EyeIcon size={13} />
+            <span>预览</span>
             <kbd className="text-[10px] opacity-50 font-mono">⌘1</kbd>
           </button>
           <button
             onClick={() => setViewMode('edit')}
-            className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === 'edit'
-                ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-slate-100 font-bold'
-                : 'text-slate-500'
+                ? 'bg-white dark:bg-slate-700 shadow-xs text-slate-800 dark:text-slate-100 font-bold'
+                : 'text-slate-500 hover:text-slate-700'
             }`}
             title="源码编辑模式 (⌘2)"
           >
-            <span>✎ 编辑</span>
+            <PencilIcon size={12} />
+            <span>编辑</span>
             <kbd className="text-[10px] opacity-50 font-mono">⌘2</kbd>
           </button>
           <button
             onClick={() => setViewMode('split')}
-            className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === 'split'
-                ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-slate-100 font-bold'
-                : 'text-slate-500'
+                ? 'bg-white dark:bg-slate-700 shadow-xs text-slate-800 dark:text-slate-100 font-bold'
+                : 'text-slate-500 hover:text-slate-700'
             }`}
             title="实时双栏模式 (⌘3)"
           >
-            <span>◫ 双栏</span>
+            <ColumnsIcon size={13} />
+            <span>双栏</span>
             <kbd className="text-[10px] opacity-50 font-mono">⌘3</kbd>
           </button>
         </div>

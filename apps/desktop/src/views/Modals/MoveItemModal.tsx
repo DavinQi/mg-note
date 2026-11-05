@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ExternalLinkIcon, CloseIcon, FolderIcon } from '../../components/Icons';
 
 interface MoveItemModalProps {
   itemPath: string;
@@ -45,16 +46,17 @@ export const MoveItemModal: React.FC<MoveItemModalProps> = ({
       >
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
           <h3 className="font-bold text-sm flex items-center gap-2">
-            <span>↪</span> 移动项目
+            <ExternalLinkIcon size={14} className="text-slate-600" />
+            <span>移动项目</span>
           </h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm">
-            ✕
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer p-1">
+            <CloseIcon size={12} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <p className="text-slate-500 truncate" title={itemPath}>
-            移动：<strong className="text-slate-700">{itemName}</strong>
+            移动：<strong className="text-slate-700 dark:text-slate-200">{itemName}</strong>
           </p>
           <div>
             <label className="block text-slate-500 font-medium mb-1.5">目标文件夹</label>
@@ -67,7 +69,7 @@ export const MoveItemModal: React.FC<MoveItemModalProps> = ({
               <option value="@root" disabled={!currentParent}>根目录{!currentParent ? '（当前位置）' : ''}</option>
               {destinations.map((path) => (
                 <option key={path} value={path}>
-                  📁 {path.split('/').join(' / ')}
+                  {path.split('/').join(' / ')}
                 </option>
               ))}
             </select>
@@ -77,14 +79,14 @@ export const MoveItemModal: React.FC<MoveItemModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
             >
               取消
             </button>
             <button
               type="submit"
               disabled={moving || !destination || (!currentParent && destinations.length === 0)}
-              className="px-4 py-2 rounded-lg text-white font-medium shadow-sm disabled:opacity-50"
+              className="px-4 py-2 rounded-lg text-white font-medium shadow-sm disabled:opacity-50 cursor-pointer"
               style={{ background: 'var(--accent-600, #059669)' }}
             >
               {moving ? '移动中…' : '移动'}

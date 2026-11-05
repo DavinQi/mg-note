@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { Avatar } from '../components/Avatar';
+import {
+  GitBranchIcon,
+  LinkIcon,
+  CloudIcon,
+  PlusIcon,
+  ComputerDesktopIcon,
+  LockClosedIcon,
+  FolderIcon,
+  FileGenericIcon,
+  AlertTriangleIcon,
+  SyncIcon,
+} from '../components/Icons';
 
 interface RepositoryContent {
   name: string;
@@ -318,8 +330,9 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-normal">
                   {provider} · {username}
                 </span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-normal font-mono">
-                  🌿 专属分支: my-git-note
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-normal font-mono flex items-center gap-1">
+                  <GitBranchIcon size={11} className="text-blue-600 dark:text-blue-400" />
+                  <span>专属分支: my-git-note</span>
                 </span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -339,46 +352,50 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 my-4 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs">
           <button
             onClick={() => { setMode('url'); setCreationGuideError(''); }}
-            className={`py-2 rounded-lg font-medium transition-all cursor-pointer ${
+            className={`py-2 rounded-lg font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               mode === 'url'
                 ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
                 : 'text-slate-500'
             }`}
           >
-            🔗 输入任意 Git 远程地址
+            <LinkIcon size={13} />
+            <span>输入任意 Git 远程地址</span>
           </button>
 
           <button
             onClick={() => { setMode('cloud'); setCreationGuideError(''); }}
-            className={`py-2 rounded-lg font-medium transition-all cursor-pointer ${
+            className={`py-2 rounded-lg font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               mode === 'cloud'
                 ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
                 : 'text-slate-500'
             }`}
           >
-            ☁️ 从我的 {provider} 仓库选择 ({repositories.length})
+            <CloudIcon size={13} />
+            <span>从我的 {provider} 仓库选择 ({repositories.length})</span>
           </button>
 
           <button
             onClick={() => { setMode('new'); setCreationGuideError(''); }}
-            className={`py-2 rounded-lg font-medium transition-all cursor-pointer ${
+            className={`py-2 rounded-lg font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               mode === 'new'
                 ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
                 : 'text-slate-500'
             }`}
           >
-            ＋ 新建私有仓库
+            <PlusIcon size={12} />
+            <span>新建私有仓库</span>
           </button>
 
           <button
             onClick={() => { setMode('local'); setCreationGuideError(''); }}
-            className={`py-2 rounded-lg font-medium transition-all cursor-pointer ${
+            className={`py-2 rounded-lg font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               mode === 'local'
                 ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
                 : 'text-slate-500'
             }`}
           >
-            🖥 本地离线仓库
+            <ComputerDesktopIcon size={13} />
+            <span>本地离线仓库</span>
           </button>
         </div>
 
@@ -407,7 +424,7 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
 
             {token && (
               <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 px-2">
-                <span>🔒</span> 已挂载您的认证 Token，私有仓库无需再次输入密码
+                <LockClosedIcon size={12} /> 已挂载您的认证 Token，私有仓库无需再次输入密码
               </div>
             )}
           </div>
@@ -481,14 +498,20 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
                         key={item.path}
                         type="button"
                         onClick={() => setRepoPath(item.path)}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-900"
+                        className="w-full flex items-center justify-between px-3 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
                       >
-                        <span>📁 {item.name}</span>
+                        <span className="flex items-center gap-1.5">
+                          <FolderIcon size={14} />
+                          <span>{item.name}</span>
+                        </span>
                         <span className="text-slate-400">查看内容 →</span>
                       </button>
                     ) : (
                       <div key={item.path} className="flex items-center justify-between px-3 py-2 text-xs text-slate-700 dark:text-slate-200">
-                        <span className="truncate">📄 {item.name}</span>
+                        <span className="truncate flex items-center gap-1.5">
+                          <FileGenericIcon size={14} />
+                          <span>{item.name}</span>
+                        </span>
                         <span className="ml-3 flex-shrink-0 text-[10px] text-slate-400">
                           {typeof item.size === 'number' ? `${Math.max(1, Math.round(item.size / 1024))} KB` : '文件'}
                         </span>
@@ -578,14 +601,15 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
 
         {/* Error message */}
         {errorMessage && (
-          <div className="mt-3 p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
-            ⚠ {errorMessage}
+          <div className="mt-3 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+            <AlertTriangleIcon size={14} className="flex-shrink-0" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Footer */}
         <div className="pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-4">
-          <div className="text-xs text-slate-400">
+          <div className="text-xs text-slate-400 flex items-center gap-3">
             {statusText ? (
               <span className="text-emerald-600 font-medium animate-pulse">{statusText}</span>
             ) : (
@@ -593,28 +617,39 @@ export const RepoSelectView: React.FC<RepoSelectViewProps> = ({
             )}
           </div>
 
-          <button
-            onClick={handleStart}
-            disabled={loading}
-            className="px-6 py-2.5 rounded-xl font-medium text-xs text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
-            style={{
-              background: 'var(--accent-600, #059669)',
-            }}
-          >
-            {loading ? (
-              <>
-                <span className="animate-spin">◌</span> 处理中…
-              </>
-            ) : (
-              mode === 'url'
-                ? '克隆远程仓库 ➔'
-                : mode === 'cloud'
-                  ? '拉取所选仓库 ➔'
-                  : mode === 'local'
-                    ? '创建本地仓库 ➔'
-                    : '创建私有仓库 ➔'
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => onRepoSelected('my-git-note')}
+              className="text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 underline cursor-pointer"
+              title="跳过配置，直接进入本地默认笔记仓库"
+            >
+              直接进入工作台 (本地默认)
+            </button>
+
+            <button
+              onClick={handleStart}
+              disabled={loading}
+              className="px-6 py-2.5 rounded-xl font-medium text-xs text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+              style={{
+                background: 'var(--accent-600, #059669)',
+              }}
+            >
+              {loading ? (
+                <>
+                  <SyncIcon size={13} className="animate-spin" /> 处理中…
+                </>
+              ) : (
+                mode === 'url'
+                  ? '克隆远程仓库 ➔'
+                  : mode === 'cloud'
+                    ? '拉取所选仓库 ➔'
+                    : mode === 'local'
+                      ? '创建本地仓库 ➔'
+                      : '创建私有仓库 ➔'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
 import { NoteItem } from '../types/note';
+import {
+  FolderIcon,
+  FolderOpenIcon,
+  RootFolderIcon,
+  ChevronRightIcon,
+  InfoCircleIcon,
+  FileImportIcon,
+  BanIcon,
+} from '../components/Icons';
 
 export interface DraggedItem {
   type: 'note' | 'folder';
@@ -81,7 +90,7 @@ export const NotebookTree: React.FC<NotebookTreeProps> = ({
     const targetDepth = targetFolder === '' ? 0 : targetFolder.split('/').length;
     const folder = findFolder(folders, activeItem.path);
     const childDepth = folder ? maxNestedFolderDepth(folder) : 0;
-    return targetDepth + 1 + childDepth <= 2;
+    return targetDepth + 1 + childDepth <= 10;
   };
 
   const handleDragEnter = (event: React.DragEvent, targetFolder: string) => {
@@ -208,16 +217,37 @@ export const NotebookTree: React.FC<NotebookTreeProps> = ({
                   onToggle(folder.path);
                 }}
               >
-                {expanded ? '⌄' : '›'}
+                <ChevronRightIcon
+                  size={11}
+                  className={`transition-transform duration-150 ${expanded ? 'rotate-90 text-slate-600 dark:text-slate-300' : 'text-slate-400'}`}
+                />
               </button>
             ) : (
               <span className="wb-folder-toggle wb-folder-toggle--empty" />
             )}
-            <span aria-hidden="true">{children.length && expanded ? '📂' : '📁'}</span>
+            <span aria-hidden="true" className="flex items-center">
+              {children.length && expanded ? (
+                <FolderOpenIcon size={16} />
+              ) : (
+                <FolderIcon size={16} />
+              )}
+            </span>
             <span className="wb-folder-item__name">{folder.name}</span>
             {isTarget && (
-              <span className="wb-drop-badge">
-                {isCurrentFolder ? 'ℹ️ 当前目录' : dropValid ? '📥 移入此文件夹' : '⛔ 不可移入'}
+              <span className="wb-drop-badge flex items-center gap-1">
+                {isCurrentFolder ? (
+                  <>
+                    <InfoCircleIcon size={11} /> 当前目录
+                  </>
+                ) : dropValid ? (
+                  <>
+                    <FileImportIcon size={11} /> 移入此文件夹
+                  </>
+                ) : (
+                  <>
+                    <BanIcon size={11} /> 不可移入
+                  </>
+                )}
               </span>
             )}
           </div>
@@ -264,15 +294,25 @@ export const NotebookTree: React.FC<NotebookTreeProps> = ({
       >
         <div className="wb-folder-item__label">
           <span className="wb-folder-toggle wb-folder-toggle--empty" />
-          <span aria-hidden="true">🗂</span>
+          <span aria-hidden="true" className="flex items-center">
+            <RootFolderIcon size={16} />
+          </span>
           <span className="wb-folder-item__name">根目录</span>
           {isRootTarget && (
-            <span className="wb-drop-badge">
-              {isRootCurrentFolder
-                ? 'ℹ️ 当前根目录'
-                : isRootValid
-                ? '📥 移入根目录'
-                : '⛔ 不可移入'}
+            <span className="wb-drop-badge flex items-center gap-1">
+              {isRootCurrentFolder ? (
+                <>
+                  <InfoCircleIcon size={11} /> 当前根目录
+                </>
+              ) : isRootValid ? (
+                <>
+                  <FileImportIcon size={11} /> 移入根目录
+                </>
+              ) : (
+                <>
+                  <BanIcon size={11} /> 不可移入
+                </>
+              )}
             </span>
           )}
         </div>

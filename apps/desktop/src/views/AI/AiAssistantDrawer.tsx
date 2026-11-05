@@ -17,6 +17,22 @@ import {
   saveAiConfig,
   testAiConnection,
 } from '../../services/aiService';
+import {
+  CloseIcon,
+  ChatBubbleIcon,
+  FileGenericIcon,
+  WrenchIcon,
+  FolderIcon,
+  LinkIcon,
+  SparklesIcon,
+  CalendarIcon,
+  CheckIcon,
+  LockClosedIcon,
+  SyncIcon,
+  CopyIcon,
+  SaveIcon,
+  LightningIcon,
+} from '../../components/Icons';
 
 export const CartoonAiIcon: React.FC<{ size?: number; className?: string }> = ({
   size = 20,
@@ -93,7 +109,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
     {
       id: 'welcome',
       role: 'assistant',
-      content: `👋 你好！我是你的 **AI 知识库助手**。\n\n我会基于你在仓库里的笔记内容进行智能回答，并标明来源出处。您可以直接提问，或点击下方快捷问题试试看！`,
+      content: `你好！我是你的 **AI 知识库助手**。\n\n我会基于你在仓库里的笔记内容进行智能回答，并标明来源出处。您可以直接提问，或点击下方快捷问题试试看！`,
       timestamp: Date.now(),
     },
   ]);
@@ -349,11 +365,11 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="hover:bg-slate-200 dark:hover:bg-slate-700 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+          className="hover:bg-slate-200 dark:hover:bg-slate-700 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center"
           title="关闭 (Esc / ⌘J)"
           aria-label="关闭"
         >
-          ✕
+          <CloseIcon size={14} />
         </button>
       </div>
 
@@ -381,9 +397,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
             background: activeTab === 'chat' ? 'var(--accent-50, #ecfdf5)' : 'transparent',
             color: activeTab === 'chat' ? 'var(--accent-700, #047857)' : 'var(--c-text-2, #64748b)',
             transition: 'all 0.15s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '5px',
           }}
         >
-          💬 知识库问答
+          <ChatBubbleIcon size={13} />
+          <span>知识库问答</span>
         </button>
 
         <button
@@ -400,9 +421,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
             background: activeTab === 'summary' ? 'var(--accent-50, #ecfdf5)' : 'transparent',
             color: activeTab === 'summary' ? 'var(--accent-700, #047857)' : 'var(--c-text-2, #64748b)',
             transition: 'all 0.15s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '5px',
           }}
         >
-          📝 总结与周报
+          <FileGenericIcon size={13} />
+          <span>总结与周报</span>
         </button>
 
         <button
@@ -419,9 +445,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
             background: activeTab === 'settings' ? 'var(--accent-50, #ecfdf5)' : 'transparent',
             color: activeTab === 'settings' ? 'var(--accent-700, #047857)' : 'var(--c-text-2, #64748b)',
             transition: 'all 0.15s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '5px',
           }}
         >
-          ⚙️ 服务商设置
+          <WrenchIcon size={13} />
+          <span>服务商设置</span>
         </button>
       </div>
 
@@ -476,10 +507,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
               title={activeCategory ? `分类: ${activeCategory}` : '根目录'}
             >
-              📁 {activeCategory ? activeCategory.split('/').pop() : '根目录'}
+              <FolderIcon size={12} />
+              <span>{activeCategory ? activeCategory.split('/').pop() : '根目录'}</span>
             </button>
             <button
               type="button"
@@ -500,10 +535,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
               title={selectedNote?.title || '未选中笔记'}
             >
-              📄 当前篇
+              <FileGenericIcon size={12} />
+              <span>当前篇</span>
             </button>
           </div>
 
@@ -554,8 +593,9 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                       fontSize: '11px',
                     }}
                   >
-                    <div style={{ fontWeight: 600, color: 'var(--c-muted, #64748b)', marginBottom: '4px' }}>
-                      🔗 来源引用笔记（点击跳转）：
+                    <div style={{ fontWeight: 600, color: 'var(--c-muted, #64748b)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <LinkIcon size={12} className="text-emerald-600" />
+                      <span>来源引用笔记（点击跳转）：</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {msg.citations.map((c) => (
@@ -601,7 +641,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                   gap: '8px',
                 }}
               >
-                <span className="animate-spin inline-block">✨</span>
+                <SparklesIcon size={14} className="animate-spin inline-block text-amber-500" />
                 <span>正在检索相关笔记并生成回答…</span>
               </div>
             )}
@@ -641,9 +681,13 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                   fontWeight: 500,
                   cursor: 'pointer',
                   flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
                 }}
               >
-                💡 {q}
+                <SparklesIcon size={11} className="text-amber-500" />
+                <span>{q}</span>
               </button>
             ))}
           </div>
@@ -726,9 +770,9 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
               {[
-                { id: 'current', label: '📄 当前笔记' },
-                { id: 'week', label: '📅 本周笔记' },
-                { id: 'category', label: `📁 ${activeCategory ? activeCategory.split('/').pop() : '当前分类'}` },
+                { id: 'current', label: '当前笔记', icon: <FileGenericIcon size={12} /> },
+                { id: 'week', label: '本周笔记', icon: <CalendarIcon size={12} /> },
+                { id: 'category', label: activeCategory ? activeCategory.split('/').pop() : '当前分类', icon: <FolderIcon size={12} /> },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -745,9 +789,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                     fontWeight: 600,
                     cursor: 'pointer',
                     textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
                   }}
                 >
-                  {item.label}
+                  {item.icon}
+                  <span className="truncate">{item.label}</span>
                 </button>
               ))}
             </div>
@@ -774,7 +823,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
               boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
             }}
           >
-            <span>{isSummarizing ? '⟳' : '⚡'}</span>
+            <span>{isSummarizing ? <SyncIcon size={14} className="animate-spin text-white" /> : <LightningIcon size={14} className="text-amber-300" />}</span>
             <span>{isSummarizing ? '正在智能整理生成中…' : '开始生成总结与周报'}</span>
           </button>
 
@@ -805,9 +854,22 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                       background: '#ffffff',
                       fontSize: '10.5px',
                       cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}
                   >
-                    {summaryCopied ? '✓ 已复制' : '📋 复制'}
+                    {summaryCopied ? (
+                      <>
+                        <CheckIcon size={11} className="text-emerald-600" />
+                        <span>已复制</span>
+                      </>
+                    ) : (
+                      <>
+                        <CopyIcon size={11} className="text-slate-500" />
+                        <span>复制</span>
+                      </>
+                    )}
                   </button>
                   <button
                     type="button"
@@ -822,9 +884,13 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                       fontSize: '10.5px',
                       fontWeight: 600,
                       cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}
                   >
-                    💾 存为新笔记
+                    <SaveIcon size={11} className="text-emerald-100" />
+                    <span>存为新笔记</span>
                   </button>
                 </div>
               </div>
@@ -972,8 +1038,9 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                 fontFamily: 'monospace',
               }}
             />
-            <div style={{ fontSize: '10px', color: 'var(--c-muted, #94a3b8)', marginTop: '3px' }}>
-              🔒 仅保存在本机钥匙串与配置中，永远不会写入 Git 仓库。
+            <div style={{ fontSize: '10px', color: 'var(--c-muted, #94a3b8)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <LockClosedIcon size={11} className="text-emerald-600" />
+              <span>仅保存在本机钥匙串与配置中，永远不会写入 Git 仓库。</span>
             </div>
           </div>
 
@@ -1089,7 +1156,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                 cursor: 'pointer',
               }}
             >
-              {saveSuccess ? '✓ 已保存' : '保存设置'}
+              {saveSuccess ? (
+                <span className="inline-flex items-center gap-1">
+                  <CheckIcon size={12} className="text-white" />
+                  已保存
+                </span>
+              ) : (
+                '保存设置'
+              )}
             </button>
           </div>
         </div>

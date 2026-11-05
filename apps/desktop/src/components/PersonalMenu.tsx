@@ -2,6 +2,16 @@ import React, { useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { Avatar } from './Avatar';
 import { CustomizePanel } from './CustomizePanel';
+import {
+  PaletteIcon,
+  GitBranchIcon,
+  RepositoryIcon,
+  LockClosedIcon,
+  CloseIcon,
+  SparklesIcon,
+  SunMoonIcon,
+  LogoutIcon,
+} from './Icons';
 
 interface PersonalMenuProps {
   repoName: string;
@@ -42,12 +52,15 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
         <div className="flex-1 min-w-0 leading-tight">
           <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate flex items-center justify-between">
             <span>{settings.nickname || 'Alex'}</span>
-            <span className="text-[11px] opacity-60">🎨</span>
+            <PaletteIcon size={12} className="opacity-60" />
           </div>
           <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
             <span>@{username}</span>
             <span>·</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-mono truncate">🌿 {currentBranch}</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-mono truncate flex items-center gap-1">
+              <GitBranchIcon size={10} />
+              {currentBranch}
+            </span>
           </div>
         </div>
       </div>
@@ -74,9 +87,11 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
                 <div className="font-bold text-xs truncate">{settings.nickname || 'Alex'}</div>
                 <div className="text-[10px] text-slate-400 truncate">GitHub · {username}</div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono flex items-center justify-between gap-1 mt-0.5">
-                  <span className="truncate">📦 {repoName} 🔒</span>
-                  <span className="shrink-0 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1 py-0.2 rounded text-[9px] border border-emerald-200/50">
-                    🌿 {currentBranch}
+                  <span className="truncate flex items-center gap-1">
+                    <RepositoryIcon size={11} /> {repoName} <LockClosedIcon size={9} />
+                  </span>
+                  <span className="shrink-0 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1 py-0.2 rounded text-[9px] border border-emerald-200/50 flex items-center gap-0.5">
+                    <GitBranchIcon size={9} /> {currentBranch}
                   </span>
                 </div>
               </div>
@@ -85,9 +100,9 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
                   setIsOpen(false);
                   setShowSubCustomize(false);
                 }}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
-                ✕
+                <CloseIcon size={12} />
               </button>
             </div>
 
@@ -100,10 +115,11 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
                     setShowSubCustomize(false);
                     onOpenBranchModal();
                   }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200 font-medium"
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <span>🌿</span> 切换 / 管理分支
+                    <GitBranchIcon size={13} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>切换 / 管理分支</span>
                   </span>
                   <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200/40 max-w-[80px] truncate">
                     {currentBranch}
@@ -117,14 +133,15 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
                   e.stopPropagation();
                   setShowSubCustomize((prev) => !prev);
                 }}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors font-medium ${
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors font-medium cursor-pointer ${
                   showSubCustomize
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
                     : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
                 }`}
               >
                 <span className="flex items-center gap-2">
-                  <span>🎨</span> 个性化设置
+                  <PaletteIcon size={13} className="text-pink-500" />
+                  <span>个性化设置</span>
                 </span>
                 <span className="text-slate-400 font-bold text-sm">
                   {showSubCustomize ? '‹' : '›'}
@@ -137,9 +154,10 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
                   setShowSubCustomize(false);
                   onSwitchRepo();
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200"
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200 cursor-pointer"
               >
-                <span>📦</span> 切换笔记仓库
+                <RepositoryIcon size={13} className="text-blue-500" />
+                <span>切换笔记仓库</span>
               </button>
 
               <button
@@ -148,17 +166,19 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
                   setShowSubCustomize(false);
                   onOpenAiSettings();
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200"
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200 cursor-pointer"
               >
-                <span>✨</span> AI 知识库设置
+                <SparklesIcon size={13} className="text-amber-500" />
+                <span>AI 知识库设置</span>
               </button>
 
               <button
                 onClick={() => updateSettings({ darkMode: !settings.darkMode })}
-                className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200"
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-slate-700 dark:text-slate-200 cursor-pointer"
               >
                 <span className="flex items-center gap-2">
-                  <span>🌓</span> {settings.darkMode ? '切换为亮色' : '切换为暗色'}
+                  <SunMoonIcon size={13} className="text-indigo-500" />
+                  <span>{settings.darkMode ? '切换为亮色' : '切换为暗色'}</span>
                 </span>
                 <span className="text-[11px] text-slate-400">
                   {settings.darkMode ? 'Dark' : 'Light'}
@@ -173,9 +193,10 @@ export const PersonalMenu: React.FC<PersonalMenuProps> = ({
                   setShowSubCustomize(false);
                   void onLogout();
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 text-left transition-colors font-medium"
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 text-left transition-colors font-medium cursor-pointer"
               >
-                <span>⎋</span> 退出登录
+                <LogoutIcon size={13} />
+                <span>退出登录</span>
               </button>
             </div>
 

@@ -11,6 +11,7 @@ import {
   SHAPES,
 } from '../types/settings';
 import { Avatar } from './Avatar';
+import { PaletteIcon, CloseIcon, CheckIcon, TrashIcon } from './Icons';
 
 interface CustomizePanelProps {
   showArt?: boolean;
@@ -70,14 +71,15 @@ export const CustomizePanel: React.FC<CustomizePanelProps> = ({ showArt = true, 
     >
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
         <h3 className="font-semibold text-sm flex items-center gap-1.5">
-          <span>🎨</span> 个性化设置
+          <PaletteIcon size={14} className="text-pink-500" />
+          <span>个性化设置</span>
         </h3>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           >
-            ✕
+            <CloseIcon size={12} />
           </button>
         )}
       </div>
@@ -141,7 +143,7 @@ export const CustomizePanel: React.FC<CustomizePanelProps> = ({ showArt = true, 
                         className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[9px] font-bold"
                         style={{ background: 'var(--accent-600)' }}
                       >
-                        ✓
+                        <CheckIcon size={9} />
                       </span>
                     )}
                   </div>
@@ -169,10 +171,10 @@ export const CustomizePanel: React.FC<CustomizePanelProps> = ({ showArt = true, 
                   </div>
                   <button
                     onClick={() => deleteArt(art.id)}
-                    className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                    className="p-1 text-slate-300 hover:text-red-500 transition-colors cursor-pointer"
                     title="删除此插画"
                   >
-                    🗑
+                    <TrashIcon size={13} />
                   </button>
                 </div>
               );

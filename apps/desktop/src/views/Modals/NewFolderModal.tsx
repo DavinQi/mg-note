@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FolderPlusIcon, CloseIcon } from '../../components/Icons';
 
 interface NewFolderModalProps {
   categories: string[];
@@ -47,11 +48,12 @@ export const NewFolderModal: React.FC<NewFolderModalProps> = ({
         style={{ background: 'var(--c-surface, #ffffff)' }}
       >
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <span>📁</span> 新建文件夹
+          <h3 className="font-bold text-sm flex items-center gap-2 text-slate-800 dark:text-slate-100">
+            <FolderPlusIcon size={16} />
+            <span>新建文件夹</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm">
-            ✕
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer p-1">
+            <CloseIcon size={12} />
           </button>
         </div>
 
@@ -71,7 +73,7 @@ export const NewFolderModal: React.FC<NewFolderModalProps> = ({
               ))}
             </select>
             <p className="text-[11px] text-slate-400 mt-1">
-              支持一级分类和二级文件夹。
+              支持多级分类与子文件夹层级组织。
             </p>
           </div>
 
