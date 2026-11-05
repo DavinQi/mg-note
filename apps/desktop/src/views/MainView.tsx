@@ -1,14 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { NoteItem, NoteKind } from '../types/note';
+import { NoteItem, NoteKind, DataRootGroupInfo, RepoStorageUsage } from '../types/note';
 import { Titlebar } from '../components/Titlebar';
 import { PersonalMenu } from '../components/PersonalMenu';
 import { MarkdownEditor } from './Editor/MarkdownEditor';
 import { DocxEditor } from './Editor/DocxEditor';
 import { docxBytesToHtml, htmlToDocxBytes } from '../utils/docxUtils';
 import { DocViewer } from './DocViewer/DocViewer';
+import { PdfViewer } from './DocViewer/PdfViewer';
 import { NewFolderModal } from './Modals/NewFolderModal';
 import { NewNoteModal } from './Modals/NewNoteModal';
 import { MoveItemModal } from './Modals/MoveItemModal';
+import { CreateRootGroupModal } from './Modals/CreateRootGroupModal';
+import { MoveToRootGroupModal } from './Modals/MoveToRootGroupModal';
 import { NotebookTree, DraggedItem, setGlobalDraggedItem } from './NotebookTree';
 import { SyncCompareModal, SyncPreview } from './Modals/SyncCompareModal';
 import { BranchSwitchModal } from './Modals/BranchSwitchModal';
@@ -29,6 +32,7 @@ import {
   ExternalLinkIcon,
   CheckIcon,
   AlertTriangleIcon,
+  RootFolderIcon,
 } from '../components/Icons';
 
 interface ContextMenuState {
@@ -85,7 +89,7 @@ interface MainViewProps {
   provider: string;
   username: string;
   registerExitSync: (sync: () => Promise<void>) => () => void;
-  onSwitchRepo: () => void;
+  onSwitchRepo: (newRepoName?: string) => void;
   onLogout: () => void;
 }
 
@@ -113,6 +117,13 @@ export const MainView: React.FC<MainViewProps> = ({
   const [syncPreview, setSyncPreview] = useState<SyncPreview | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Multi-Vault / Data Root Groups state
+  const [rootGroups, setRootGroups] = useState<DataRootGroupInfo[]>([]);
+  const [currentUsage, setCurrentUsage] = useState<RepoStorageUsage | null>(null);
+  const [showRootGroupMenu, setShowRootGroupMenu] = useState(false);
+  const [showCreateRootGroup, setShowCreateRootGroup] = useState(false);
+  const [moveToRootGroupItem, setMoveToRootGroupItem] = useState<{ path: string; isFolder: boolean } | null>(null);
+
   // Modals state
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [showNewNote, setShowNewNote] = useState(false);
@@ -125,6 +136,25 @@ export const MainView: React.FC<MainViewProps> = ({
   const [showAiDrawer, setShowAiDrawer] = useState(false);
   const [aiInitialTab, setAiInitialTab] = useState<'chat' | 'summary' | 'settings'>('chat');
   const noteSaveQueueRef = React.useRef<Promise<void>>(Promise.resolve());
+
+  // Refresh root groups list and capacity usage
+  const refreshRootGroupsAndUsage = useCallback(async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const [groups, usage] = await Promise.all([
+        invoke<DataRootGroupInfo[]>('list_data_root_groups', { currentRepo: repoName }),
+        invoke<RepoStorageUsage>('get_repo_storage_usage', { repoName }),
+      ]);
+      setRootGroups(groups);
+      setCurrentUsage(usage);
+    } catch (err) {
+      console.warn('Failed to load root groups or storage usage:', err);
+    }
+  }, [repoName]);
+
+  useEffect(() => {
+    void refreshRootGroupsAndUsage();
+  }, [refreshRootGroupsAndUsage]);
 
   // Global shortcut ⌘J / Ctrl+J to toggle AI Assistant
   useEffect(() => {
@@ -882,7 +912,153 @@ export const MainView: React.FC<MainViewProps> = ({
       {/* 3-Column Main Layout */}
       <div className="workbench-layout">
         {/* Column 1: Sidebar */}
-        <aside className="wb-sidebar">
+        <aside className="wb-sidebar relative">
+          {/* Data Root Group Switcher & Capacity Guard Card */}
+          <div className="wb-root-group-card">
+            <div className="flex items-center justify-between mb-1">
+              <button
+                type="button"
+                onClick={() => setShowRootGroupMenu((prev) => !prev)}
+                className="flex items-center gap-1.5 font-bold text-xs text-slate-800 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer min-w-0"
+                title="点击切换或管理数据根组 (独立 Git 仓库)"
+              >
+                <RootFolderIcon size={14} className="flex-shrink-0" />
+                <span className="truncate max-w-[130px]">
+                  {rootGroups.find((g) => g.name === repoName)?.displayName || repoName}
+                </span>
+                <ChevronDownIcon size={10} className="text-slate-400 flex-shrink-0" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCreateRootGroup(true)}
+                className="p-1 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-700 text-slate-400 hover:text-emerald-600 cursor-pointer flex items-center"
+                title="新建数据根组 (创建独立 Git 仓库以扩容分流)"
+              >
+                <PlusIcon size={11} />
+              </button>
+            </div>
+
+            {/* Capacity Meter */}
+            {currentUsage && (
+              <div>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mb-1">
+                  <span>已用 {currentUsage.totalSizeFormatted} / {currentUsage.quotaFormatted}</span>
+                  <span
+                    className={
+                      currentUsage.healthStatus === 'critical'
+                        ? 'text-red-600 dark:text-red-400 font-bold'
+                        : currentUsage.healthStatus === 'warning'
+                        ? 'text-amber-600 dark:text-amber-400 font-semibold'
+                        : 'text-emerald-600 dark:text-emerald-400'
+                    }
+                  >
+                    {currentUsage.usagePercentage.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-200/80 dark:bg-slate-700/80 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${Math.min(100, Math.max(3, currentUsage.usagePercentage))}%`,
+                      background:
+                        currentUsage.healthStatus === 'critical'
+                          ? '#ef4444'
+                          : currentUsage.healthStatus === 'warning'
+                          ? '#f59e0b'
+                          : 'var(--accent-500, #10b981)',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Capacity warning alert if approaching limit */}
+            {currentUsage && currentUsage.healthStatus !== 'healthy' && (
+              <div className="mt-2 p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-between gap-1.5 text-[10px] text-amber-800 dark:text-amber-200">
+                <span className="truncate">仓库空间即将满载</span>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateRootGroup(true)}
+                  className="px-1.5 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white font-medium cursor-pointer flex-shrink-0"
+                >
+                  新建分区
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Root Groups Dropdown Popup */}
+          {showRootGroupMenu && (
+            <>
+              <div className="wb-context-backdrop" onClick={() => setShowRootGroupMenu(false)} />
+              <div
+                className="wb-root-groups-dropdown"
+                style={{
+                  position: 'absolute',
+                  top: '56px',
+                  left: '12px',
+                  width: '260px',
+                  zIndex: 70,
+                  background: 'var(--c-surface, #ffffff)',
+                  borderRadius: '12px',
+                  border: '1px solid var(--c-line, #e2e8f0)',
+                  boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
+                  padding: '6px',
+                }}
+              >
+                <div className="px-2 py-1 text-[10.5px] font-semibold text-slate-400">
+                  数据根组 (独立 Git 仓库)
+                </div>
+                <div className="max-h-56 overflow-y-auto flex flex-col gap-1 my-1">
+                  {rootGroups.map((group) => {
+                    const isCur = group.name === repoName;
+                    return (
+                      <button
+                        key={group.name}
+                        type="button"
+                        onClick={() => {
+                          setShowRootGroupMenu(false);
+                          if (!isCur) {
+                            onSwitchRepo(group.name);
+                          }
+                        }}
+                        className={`w-full text-left p-2 rounded-lg transition-colors flex items-center justify-between cursor-pointer ${
+                          isCur
+                            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5 font-medium text-xs">
+                            <RootFolderIcon size={13} className="flex-shrink-0" />
+                            <span className="truncate">{group.displayName || group.name}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                            {group.totalSizeFormatted} / {group.quotaFormatted} · {group.provider}
+                          </div>
+                        </div>
+                        {isCur && <CheckIcon size={13} className="text-emerald-600 flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRootGroupMenu(false);
+                    setShowCreateRootGroup(true);
+                  }}
+                  className="w-full text-left p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center gap-2 text-xs font-medium cursor-pointer"
+                >
+                  <PlusIcon size={12} />
+                  <span>新建数据根组 (扩容分流)…</span>
+                </button>
+              </div>
+            </>
+          )}
+
           <div className="wb-section-title">
             <span>笔记本分类</span>
             <button
@@ -1107,6 +1283,14 @@ export const MainView: React.FC<MainViewProps> = ({
                 onSave={handleSaveNote}
                 onContentChange={setActiveContent}
               />
+            ) : selectedNote.kind === 'pdf' ? (
+              <PdfViewer
+                key={selectedNote.id}
+                repoName={repoName}
+                relPath={selectedNote.path}
+                title={selectedNote.title}
+                onOpenExternal={handleOpenExternal}
+              />
             ) : (
               <DocViewer
                 key={selectedNote.id}
@@ -1203,20 +1387,42 @@ export const MainView: React.FC<MainViewProps> = ({
                     >
                       <ExternalLinkIcon size={13} /> 移动文件夹…
                     </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setMoveToRootGroupItem({ path: contextMenu.path, isFolder: true });
+                        setContextMenu(null);
+                      }}
+                      className="flex items-center gap-2 text-amber-700 dark:text-amber-300"
+                    >
+                      <RootFolderIcon size={13} /> 移至其他数据根组 (跨库迁移)…
+                    </button>
                   </>
                 )}
               </>
             ) : (
-              <button
-                role="menuitem"
-                onClick={() => {
-                  setMoveItem({ path: contextMenu.path, isFolder: false });
-                  setContextMenu(null);
-                }}
-                className="flex items-center gap-2"
-              >
-                <ExternalLinkIcon size={13} /> 移动文件…
-              </button>
+              <>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMoveItem({ path: contextMenu.path, isFolder: false });
+                    setContextMenu(null);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <ExternalLinkIcon size={13} /> 移动文件…
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMoveToRootGroupItem({ path: contextMenu.path, isFolder: false });
+                    setContextMenu(null);
+                  }}
+                  className="flex items-center gap-2 text-amber-700 dark:text-amber-300"
+                >
+                  <RootFolderIcon size={13} /> 移至其他数据根组 (跨库迁移)…
+                </button>
+              </>
             )}
           </div>
         </>
@@ -1255,6 +1461,33 @@ export const MainView: React.FC<MainViewProps> = ({
             setCurrentBranch(newBranch);
             setSyncStatusText(`已切换至分支 [${newBranch}]`);
             await refreshNotesFromDisk();
+          }}
+        />
+      )}
+
+      {showCreateRootGroup && (
+        <CreateRootGroupModal
+          isOpen={showCreateRootGroup}
+          onClose={() => setShowCreateRootGroup(false)}
+          onCreated={async (newGroup) => {
+            await refreshRootGroupsAndUsage();
+            onSwitchRepo(newGroup.name);
+          }}
+        />
+      )}
+
+      {moveToRootGroupItem && (
+        <MoveToRootGroupModal
+          isOpen={Boolean(moveToRootGroupItem)}
+          sourceRepo={repoName}
+          sourcePath={moveToRootGroupItem.path}
+          isFolder={moveToRootGroupItem.isFolder}
+          rootGroups={rootGroups}
+          onClose={() => setMoveToRootGroupItem(null)}
+          onMoved={async (targetRepo) => {
+            await refreshNotesFromDisk();
+            await refreshRootGroupsAndUsage();
+            setSyncStatusText(`已将文档迁移至根组 [${targetRepo}]`);
           }}
         />
       )}

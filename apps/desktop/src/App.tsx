@@ -63,6 +63,15 @@ export const AppContent: React.FC = () => {
     setStep('main');
   };
 
+  const handleSwitchRepo = (newRepoName?: string) => {
+    if (newRepoName) {
+      setRepoName(newRepoName);
+      setStep('main');
+    } else {
+      setStep('repo_select');
+    }
+  };
+
   const handleLogout = async () => {
     if (token) {
       try {
@@ -160,7 +169,7 @@ export const AppContent: React.FC = () => {
             provider={provider}
             username={username}
             registerExitSync={registerExitSync}
-            onSwitchRepo={() => setStep('repo_select')}
+            onSwitchRepo={handleSwitchRepo}
             onLogout={handleLogout}
           />
         )}

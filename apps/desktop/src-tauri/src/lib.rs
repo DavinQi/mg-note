@@ -99,6 +99,10 @@ pub fn run() {
             commands::install_git_environment,
             commands::list_repository_branches,
             commands::switch_repository_branch,
+            commands::get_repo_storage_usage,
+            commands::list_data_root_groups,
+            commands::create_data_root_group,
+            commands::move_item_between_repos,
             commands::exit_app,
         ])
         .build(tauri::generate_context!())

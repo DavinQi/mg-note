@@ -21,3 +21,35 @@ export interface NoteState {
   scrollLine: number;
   cursor: number;
 }
+
+export interface RepoStorageUsage {
+  repoName: string;
+  workingSizeBytes: number;
+  gitSizeBytes: number;
+  totalSizeBytes: number;
+  totalSizeFormatted: string;
+  fileCount: number;
+  quotaBytes: number;
+  quotaFormatted: string;
+  usagePercentage: number;
+  healthStatus: 'healthy' | 'warning' | 'critical';
+  remoteProvider: 'gitee' | 'github' | 'local' | string;
+  remoteUrl?: string;
+}
+
+export interface DataRootGroupInfo {
+  name: string;
+  displayName: string;
+  provider: string;
+  remoteUrl?: string;
+  totalSizeBytes: number;
+  totalSizeFormatted: string;
+  quotaBytes: number;
+  quotaFormatted: string;
+  usagePercentage: number;
+  healthStatus: 'healthy' | 'warning' | 'critical';
+  fileCount: number;
+  currentBranch: string;
+  lastSyncTime?: string;
+  isCurrent: boolean;
+}

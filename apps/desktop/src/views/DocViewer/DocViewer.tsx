@@ -59,40 +59,26 @@ export const DocViewer: React.FC<DocViewerProps> = ({ title, kind, onOpenExterna
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {!isPdf ? (
-            <button
-              onClick={onOpenExternal}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: 'var(--accent-600, #059669)',
-                color: '#ffffff',
-                fontSize: '12px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(5, 150, 105, 0.2)',
-              }}
-            >
-              <span>在 {isWord ? 'WPS / Word' : 'Keynote / PPT'} 中编辑</span>
-              <ExternalLinkIcon size={13} />
-            </button>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button className="btn btn--sm flex items-center gap-1.5">
-                <PencilIcon size={13} /> 画笔
-              </button>
-              <button className="btn btn--sm btn--warn flex items-center gap-1.5">
-                <HighlighterIcon size={13} /> 高亮
-              </button>
-              <button className="btn btn--sm flex items-center gap-1.5">
-                <ChatBubbleIcon size={13} /> 批注便签
-              </button>
-            </div>
-          )}
+          <button
+            onClick={onOpenExternal}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              background: 'var(--accent-600, #059669)',
+              color: '#ffffff',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(5, 150, 105, 0.2)',
+            }}
+          >
+            <span>在系统默认应用中打开</span>
+            <ExternalLinkIcon size={13} />
+          </button>
         </div>
       </div>
 
@@ -119,21 +105,19 @@ export const DocViewer: React.FC<DocViewerProps> = ({ title, kind, onOpenExterna
               )}
             </div>
             <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--c-text, #1f2433)', marginBottom: '8px' }}>
-              {isWord ? 'DOCX 文档只读预览' : isPpt ? 'PPTX 幻灯片浏览' : 'PDF 矢量文档预览'}
+              {isWord ? 'DOCX 文档预览' : isPpt ? 'PPTX 幻灯片浏览' : '矢量文档预览'}
             </h3>
             <p style={{ fontSize: '12px', color: 'var(--c-muted, #8a90a2)', maxWidth: '420px', lineHeight: 1.6, marginBottom: '24px' }}>
-              为确保文档排版、公式与图表 100% 不发生版面变形与错乱，点击右上角即可无缝调用系统本机应用进行修改并自动写回仓库。
+              为确保复杂排版、公式与高保真图表 100% 不发生版面变形与错乱，点击右上角即可无缝调用系统本机应用进行修改并自动写回仓库。
             </p>
-            {!isPdf && (
-              <button
-                onClick={onOpenExternal}
-                className="btn btn--sm flex items-center gap-2"
-                style={{ padding: '8px 16px', borderRadius: '8px' }}
-              >
-                <span>打开本机默认程序进行编辑</span>
-                <ExternalLinkIcon size={13} />
-              </button>
-            )}
+            <button
+              onClick={onOpenExternal}
+              className="btn btn--sm flex items-center gap-2"
+              style={{ padding: '8px 16px', borderRadius: '8px' }}
+            >
+              <span>打开本机默认程序进行查看与编辑</span>
+              <ExternalLinkIcon size={13} />
+            </button>
           </div>
         </div>
       </div>

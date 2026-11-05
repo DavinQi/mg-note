@@ -7,8 +7,8 @@ use crate::git_ops::{
 };
 use crate::keychain::{delete_token, get_token, save_token};
 use crate::models::{
-    GitBranchItem, GitEnvironmentStatus, ImportFilesResult, ImportFolderResult, NoteFileItem,
-    SavedCredential, Settings, SyncPreview, SyncStatus,
+    DataRootGroupInfo, GitBranchItem, GitEnvironmentStatus, ImportFilesResult, ImportFolderResult,
+    NoteFileItem, RepoStorageUsage, SavedCredential, Settings, SyncPreview, SyncStatus,
 };
 use crate::storage::{
     forget_saved_credential, get_repos_dir, load_saved_credentials, load_settings, open_external,
@@ -630,6 +630,41 @@ pub fn import_local_files(
     })
 }
 
+fn copy_folder_recursive(
+    src: &Path,
+    dst: &Path,
+    base_root: &Path,
+    file_count: &mut usize,
+    folder_count: &mut usize,
+) -> Result<(), String> {
+    let entries = match fs::read_dir(src) {
+        Ok(e) => e,
+        Err(err) => return Err(format!("读取文件夹失败: {err}")),
+    };
+    for entry in entries.flatten() {
+        let entry_path = entry.path();
+        let name = entry_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+
+        if name.starts_with('.') || name == "node_modules" || name == "target" || name == ".git" {
+            continue;
+        }
+
+        if entry_path.is_dir() {
+            let sub_dst = dst.join(&name);
+            fs::create_dir_all(&sub_dst).map_err(|e| e.to_string())?;
+            ensure_folder_metadata(&sub_dst, base_root);
+            *folder_count += 1;
+            copy_folder_recursive(&entry_path, &sub_dst, base_root, file_count, folder_count)?;
+        } else if entry_path.is_file() {
+            let sub_dst = dst.join(&name);
+            if fs::copy(&entry_path, &sub_dst).is_ok() {
+                *file_count += 1;
+            }
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn import_local_folder(
     repo_name: String,
@@ -679,41 +714,6 @@ pub fn import_local_folder(
     let mut file_count = 0;
     let mut folder_count = 1;
 
-    fn copy_folder_recursive(
-        src: &Path,
-        dst: &Path,
-        base_root: &Path,
-        file_count: &mut usize,
-        folder_count: &mut usize,
-    ) -> Result<(), String> {
-        let entries = match fs::read_dir(src) {
-            Ok(e) => e,
-            Err(err) => return Err(format!("读取文件夹失败: {err}")),
-        };
-        for entry in entries.flatten() {
-            let entry_path = entry.path();
-            let name = entry_path.file_name().unwrap_or_default().to_string_lossy().to_string();
-
-            if name.starts_with('.') || name == "node_modules" || name == "target" || name == ".git" {
-                continue;
-            }
-
-            if entry_path.is_dir() {
-                let sub_dst = dst.join(&name);
-                fs::create_dir_all(&sub_dst).map_err(|e| e.to_string())?;
-                ensure_folder_metadata(&sub_dst, base_root);
-                *folder_count += 1;
-                copy_folder_recursive(&entry_path, &sub_dst, base_root, file_count, folder_count)?;
-            } else if entry_path.is_file() {
-                let sub_dst = dst.join(&name);
-                if fs::copy(&entry_path, &sub_dst).is_ok() {
-                    *file_count += 1;
-                }
-            }
-        }
-        Ok(())
-    }
-
     copy_folder_recursive(&src_dir, &dest_folder, &base_dir, &mut file_count, &mut folder_count)?;
 
     let rel_path = if target_folder.is_empty() {
@@ -728,6 +728,341 @@ pub fn import_local_folder(
         file_count,
         folder_count,
     })
+}
+
+fn dir_size_and_count(path: &Path) -> (u64, usize) {
+    let mut size = 0;
+    let mut count = 0;
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if let Ok(meta) = entry.metadata() {
+                if meta.is_file() {
+                    size += meta.len();
+                    count += 1;
+                } else if meta.is_dir() {
+                    let (sub_size, sub_count) = dir_size_and_count(&p);
+                    size += sub_size;
+                    count += sub_count;
+                }
+            }
+        }
+    }
+    (size, count)
+}
+
+fn format_bytes(bytes: u64) -> String {
+    if bytes >= 1024 * 1024 * 1024 {
+        format!("{:.2} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+    } else if bytes >= 1024 * 1024 {
+        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+    } else if bytes >= 1024 {
+        format!("{:.0} KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{} B", bytes)
+    }
+}
+
+fn inspect_repo_storage(repo_name: &str) -> Result<RepoStorageUsage, String> {
+    let repo_path = repository_path(repo_name)?;
+    let notebook_dir = repo_path.join("notebooks");
+    let git_dir = repo_path.join(".git");
+
+    let (working_size_bytes, file_count) = if notebook_dir.is_dir() {
+        dir_size_and_count(&notebook_dir)
+    } else {
+        (0, 0)
+    };
+
+    let (git_size_bytes, _) = if git_dir.is_dir() {
+        dir_size_and_count(&git_dir)
+    } else {
+        (0, 0)
+    };
+
+    let total_size_bytes = working_size_bytes + git_size_bytes;
+    let total_size_formatted = format_bytes(total_size_bytes);
+
+    // Try to inspect git remote
+    let mut remote_url = None;
+    let mut remote_provider = "local".to_string();
+    if let Ok(repo) = git2::Repository::open(&repo_path) {
+        if let Ok(remote) = repo.find_remote("origin") {
+            if let Some(url) = remote.url() {
+                remote_url = Some(url.to_string());
+                let lower = url.to_lowercase();
+                if lower.contains("gitee.com") {
+                    remote_provider = "gitee".to_string();
+                } else if lower.contains("github.com") {
+                    remote_provider = "github".to_string();
+                } else {
+                    remote_provider = "git".to_string();
+                }
+            }
+        }
+    }
+
+    // Determine estimated quota based on provider
+    let quota_bytes: u64 = match remote_provider.as_str() {
+        "gitee" => 500 * 1024 * 1024,   // 500 MB
+        "github" => 1024 * 1024 * 1024, // 1 GB
+        _ => 5 * 1024 * 1024 * 1024,    // 5 GB for local
+    };
+    let quota_formatted = format_bytes(quota_bytes);
+
+    let usage_percentage = if quota_bytes > 0 {
+        ((total_size_bytes as f64 / quota_bytes as f64) * 100.0) as f32
+    } else {
+        0.0
+    };
+
+    let health_status = if usage_percentage >= 85.0 {
+        "critical".to_string()
+    } else if usage_percentage >= 70.0 {
+        "warning".to_string()
+    } else {
+        "healthy".to_string()
+    };
+
+    Ok(RepoStorageUsage {
+        repo_name: repo_name.to_string(),
+        working_size_bytes,
+        git_size_bytes,
+        total_size_bytes,
+        total_size_formatted,
+        file_count,
+        quota_bytes,
+        quota_formatted,
+        usage_percentage,
+        health_status,
+        remote_provider,
+        remote_url,
+    })
+}
+
+#[tauri::command]
+pub fn get_repo_storage_usage(repo_name: String) -> Result<RepoStorageUsage, String> {
+    inspect_repo_storage(&repo_name)
+}
+
+#[tauri::command]
+pub fn list_data_root_groups(current_repo: Option<String>) -> Result<Vec<DataRootGroupInfo>, String> {
+    let repos_dir = get_repos_dir();
+    let mut groups = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(&repos_dir) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                if let Some(name) = entry.file_name().to_str() {
+                    // Skip hidden dirs
+                    if name.starts_with('.') {
+                        continue;
+                    }
+
+                    if let Ok(usage) = inspect_repo_storage(name) {
+                        let repo_path = repos_dir.join(name);
+                        let mut current_branch = "my-git-note".to_string();
+                        let mut last_sync_time = None;
+
+                        if let Ok(repo) = git2::Repository::open(&repo_path) {
+                            if let Ok(head) = repo.head() {
+                                if let Some(bname) = head.shorthand() {
+                                    current_branch = bname.to_string();
+                                }
+                            }
+                            if let Ok(commit) = repo.head().and_then(|h| h.peel_to_commit()) {
+                                let time = commit.time();
+                                let dt = chrono::DateTime::from_timestamp(time.seconds(), 0);
+                                if let Some(local_dt) = dt {
+                                    last_sync_time = Some(local_dt.format("%Y-%m-%d %H:%M").to_string());
+                                }
+                            }
+                        }
+
+                        let is_current = current_repo.as_deref().map_or(false, |cur| cur == name);
+                        let display_name = name.to_string();
+
+                        groups.push(DataRootGroupInfo {
+                            name: name.to_string(),
+                            display_name,
+                            provider: usage.remote_provider,
+                            remote_url: usage.remote_url,
+                            total_size_bytes: usage.total_size_bytes,
+                            total_size_formatted: usage.total_size_formatted,
+                            quota_bytes: usage.quota_bytes,
+                            quota_formatted: usage.quota_formatted,
+                            usage_percentage: usage.usage_percentage,
+                            health_status: usage.health_status,
+                            file_count: usage.file_count,
+                            current_branch,
+                            last_sync_time,
+                            is_current,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort: current first, then alphabetically
+    groups.sort_by(|a, b| {
+        b.is_current.cmp(&a.is_current).then_with(|| a.name.cmp(&b.name))
+    });
+
+    Ok(groups)
+}
+
+#[tauri::command]
+pub fn create_data_root_group(
+    name: String,
+    display_name: Option<String>,
+    provider: Option<String>,
+    remote_url: Option<String>,
+) -> Result<DataRootGroupInfo, String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err("数据根组名称不能为空".into());
+    }
+    if trimmed.contains('/') || trimmed.contains('\\') || trimmed.contains("..") {
+        return Err("名称不能包含路径分隔符或非法字符".into());
+    }
+
+    let repos_dir = get_repos_dir();
+    let repo_path = repos_dir.join(trimmed);
+    if repo_path.exists() {
+        return Err(format!("数据根组「{}」已存在", trimmed));
+    }
+
+    let notebook_dir = repo_path.join("notebooks");
+    fs::create_dir_all(&notebook_dir).map_err(|e| format!("创建目录失败：{e}"))?;
+
+    // Create a welcoming note in the new root group
+    let disp = display_name.clone().unwrap_or_else(|| trimmed.to_string());
+    let welcome_content = format!(
+        "# 数据根组：{}\n\n- 创建日期：{}\n- 存储类型：{}\n\n本数据根组为独立的 Git 仓库，可独立扩容与同步。\n",
+        disp,
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+        provider.as_deref().unwrap_or("本地仓库")
+    );
+    let _ = fs::write(notebook_dir.join("关于本数据根组.md"), welcome_content);
+
+    // Initialize git repository
+    let repo = open_or_init_repo(&repo_path, None)?;
+
+    // If remote URL is given, bind remote origin
+    if let Some(ref r_url) = remote_url {
+        if !r_url.trim().is_empty() {
+            let _ = set_remote_origin(&repo, r_url.trim());
+        }
+    }
+
+    // Initial commit
+    let _ = commit_all(&repo, &format!("mg-node: initialize data root group [{}]", trimmed));
+
+    let usage = inspect_repo_storage(trimmed)?;
+    Ok(DataRootGroupInfo {
+        name: trimmed.to_string(),
+        display_name: disp,
+        provider: usage.remote_provider,
+        remote_url: usage.remote_url,
+        total_size_bytes: usage.total_size_bytes,
+        total_size_formatted: usage.total_size_formatted,
+        quota_bytes: usage.quota_bytes,
+        quota_formatted: usage.quota_formatted,
+        usage_percentage: usage.usage_percentage,
+        health_status: usage.health_status,
+        file_count: usage.file_count,
+        current_branch: "my-git-note".to_string(),
+        last_sync_time: Some(chrono::Local::now().format("%Y-%m-%d %H:%M").to_string()),
+        is_current: true,
+    })
+}
+
+#[tauri::command]
+pub fn move_item_between_repos(
+    source_repo: String,
+    source_path: String,
+    target_repo: String,
+    target_folder: String,
+    is_folder: bool,
+) -> Result<String, String> {
+    if source_repo == target_repo {
+        return Err("源数据根组与目标数据根组相同，无需跨根组迁移".into());
+    }
+
+    let source_root = notebook_root(&source_repo)?;
+    let target_root = notebook_root(&target_repo)?;
+
+    let source_rel = validate_relative_path(&source_path, false)?;
+    let target_folder_rel = validate_relative_path(&target_folder, true)?;
+
+    let source_abs = source_root.join(&source_rel);
+    if !source_abs.exists() {
+        return Err("源文档或文件夹不存在".into());
+    }
+
+    let file_name = source_abs
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "文件名无效".to_string())?;
+
+    let target_dir = target_root.join(&target_folder_rel);
+    fs::create_dir_all(&target_dir).map_err(|e| format!("创建目标目录失败：{e}"))?;
+
+    let mut dest_path = target_dir.join(file_name);
+    let mut final_filename = file_name.to_string();
+
+    // Handle collision in target
+    if dest_path.exists() {
+        let (stem, ext) = if is_folder {
+            (file_name.to_string(), "".to_string())
+        } else {
+            let path_obj = Path::new(file_name);
+            let s = path_obj.file_stem().and_then(|s| s.to_str()).unwrap_or(file_name).to_string();
+            let e = path_obj.extension().and_then(|e| e.to_str()).map(|e| format!(".{}", e)).unwrap_or_default();
+            (s, e)
+        };
+
+        let mut idx = 1;
+        while dest_path.exists() {
+            final_filename = format!("{} ({}){}", stem, idx, ext);
+            dest_path = target_dir.join(&final_filename);
+            idx += 1;
+        }
+    }
+
+    // Move file/folder across repositories
+    if is_folder {
+        let mut f_cnt = 0;
+        let mut d_cnt = 0;
+        copy_folder_recursive(&source_abs, &dest_path, &target_root, &mut f_cnt, &mut d_cnt)?;
+        let _ = fs::remove_dir_all(&source_abs);
+    } else {
+        if let Err(_) = fs::rename(&source_abs, &dest_path) {
+            fs::copy(&source_abs, &dest_path).map_err(|e| format!("复制文件失败：{e}"))?;
+            let _ = fs::remove_file(&source_abs);
+        }
+    }
+
+    // Commit deletion in source repo
+    let source_repo_path = repository_path(&source_repo)?;
+    if let Ok(s_repo) = git2::Repository::open(&source_repo_path) {
+        let _ = commit_all(&s_repo, &format!("mg-node: migrate [{}] to vault [{}]", file_name, target_repo));
+    }
+
+    // Commit addition in target repo
+    let target_repo_path = repository_path(&target_repo)?;
+    if let Ok(t_repo) = git2::Repository::open(&target_repo_path) {
+        let _ = commit_all(&t_repo, &format!("mg-node: receive [{}] from vault [{}]", final_filename, source_repo));
+    }
+
+    let final_rel_path = if target_folder.is_empty() {
+        final_filename
+    } else {
+        format!("{}/{}", target_folder, final_filename)
+    };
+
+    Ok(final_rel_path)
 }
 
 #[tauri::command]

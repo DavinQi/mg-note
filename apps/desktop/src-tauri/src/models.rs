@@ -147,3 +147,39 @@ pub struct ImportFolderResult {
     pub file_count: usize,
     pub folder_count: usize,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepoStorageUsage {
+    pub repo_name: String,
+    pub working_size_bytes: u64,
+    pub git_size_bytes: u64,
+    pub total_size_bytes: u64,
+    pub total_size_formatted: String,
+    pub file_count: usize,
+    pub quota_bytes: u64,
+    pub quota_formatted: String,
+    pub usage_percentage: f32,
+    pub health_status: String, // "healthy", "warning", "critical"
+    pub remote_provider: String, // "gitee", "github", "local"
+    pub remote_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DataRootGroupInfo {
+    pub name: String,
+    pub display_name: String,
+    pub provider: String,
+    pub remote_url: Option<String>,
+    pub total_size_bytes: u64,
+    pub total_size_formatted: String,
+    pub quota_bytes: u64,
+    pub quota_formatted: String,
+    pub usage_percentage: f32,
+    pub health_status: String,
+    pub file_count: usize,
+    pub current_branch: String,
+    pub last_sync_time: Option<String>,
+    pub is_current: bool,
+}
